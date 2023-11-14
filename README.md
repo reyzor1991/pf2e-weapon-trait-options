@@ -1,2 +1,1 @@
-# pf2e-weapon-trait-options
-PF2 Weapon Trait Options
+[Support me on Patreon](https://www.patreon.com/reyzor1991)

@@ -1,0 +1,55 @@
+{
+  "id": "pf2e-weapon-trait-options",
+  "title": "PF2 Weapon Trait Options",
+  "description": "PF2 Weapon Trait Options",
+  "version": "0.0.1",
+  "authors": [
+    {
+      "name": "Reyzor",
+      "url": "https://github.com/reyzor1991",
+      "discord": "reyzor1991"
+    }
+  ],
+  "languages": [],
+  "esmodules": [
+    "pf2e-weapon-trait-options.js"
+  ],
+  "styles": [
+  ],
+  "packFolders": [],
+  "packs": [],
+  "socket": true,
+  "compatibility": {
+    "minimum": "11",
+    "verified": "11.314"
+  },
+  "url": "https://www.patreon.com/Reyzor1991",
+  "manifest": "https://drive.usercontent.google.com/download?id=1so4pwmmCh3Oi37gXGpGBWftogm5332F3",
+  "download": "https://drive.usercontent.google.com/download?id=1icox2DCDzG_ZBOWYBUIybcrZYvgXdnCn",
+  "changelog": "https://drive.usercontent.google.com/download?id=1LbDOesVGp9t5_0A5rJLsZhQd-deKMpU3",
+  "relationships": {
+    "systems": [
+      {
+        "id": "pf2e",
+        "type": "system",
+        "manifest": "https://github.com/foundryvtt/pf2e/releases/latest/download/system.json",
+        "compatibility": {
+          "minimum": "5.3.2",
+          "verified": "5.8.3"
+        }
+      }
+    ],
+    "requires": [
+      {
+        "id": "socketlib",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/manuelVo/foundryvtt-socketlib/master/module.json"
+      },
+      {
+        "id": "lib-wrapper",
+        "type": "module",
+        "manifest": "https://raw.githubusercontent.com/ruipin/fvtt-lib-wrapper/master/module.json"
+      }
+    ]
+  }
+}
