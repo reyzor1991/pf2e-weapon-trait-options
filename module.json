@@ -1,7 +1,7 @@
 {
   "id": "pf2e-weapon-trait-options",
-  "title": "PF2 Weapon Trait Options",
-  "description": "PF2 Weapon Trait Options",
+  "title": "PF2e Weapon Trait Options",
+  "description": "PF2e Weapon Trait Options",
   "version": "0.0.1",
   "authors": [
     {
@@ -21,7 +21,7 @@
   "socket": true,
   "compatibility": {
     "minimum": "11",
-    "verified": "11.314"
+    "verified": "11.315"
   },
   "url": "https://www.patreon.com/Reyzor1991",
   "manifest": "https://drive.usercontent.google.com/download?id=1so4pwmmCh3Oi37gXGpGBWftogm5332F3",
@@ -44,11 +44,6 @@
         "id": "socketlib",
         "type": "module",
         "manifest": "https://raw.githubusercontent.com/manuelVo/foundryvtt-socketlib/master/module.json"
-      },
-      {
-        "id": "lib-wrapper",
-        "type": "module",
-        "manifest": "https://raw.githubusercontent.com/ruipin/fvtt-lib-wrapper/master/module.json"
       }
     ]
   }
