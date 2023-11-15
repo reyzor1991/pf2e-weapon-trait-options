@@ -17,8 +17,6 @@ const upperOrWordBoundariedLowerRE = new RegExp(`${upperCaseLetter}|(?:${wordBou
 // Backswing
 Hooks.on("renderChatMessage", async (message, html) => {
     if (message.flags?.pf2e?.context?.type != 'attack-roll') {return}
-    if (!message.target) {return}
-    if (!message.target.actor) {return}
 
     let buttons = []
     let _ignore = (message.getFlag(moduleName, 'ignore') ?? [])
@@ -150,7 +148,7 @@ async function rollLogic(event, message, _ignore, traitName) {
             }, {}) ?? {};
     })();
 
-    const degree = new DegreeOfSuccess(roll, systemFlags?.context?.dc, dosAdjustments);
+    const degree = message.flags.pf2e.context.dc ? new DegreeOfSuccess(roll, systemFlags?.context?.dc, dosAdjustments) : null;
     if (degree) {
         context.outcome = DEGREE_OF_SUCCESS_STRINGS[degree.value];
         context.unadjustedOutcome = DEGREE_OF_SUCCESS_STRINGS[degree.unadjusted];
@@ -164,7 +162,10 @@ async function rollLogic(event, message, _ignore, traitName) {
 
     const newFlavor = await (async () => {
         const result = await createResultFlavor({ degree, target: message.target ?? null });
-        const tags = createTagFlavor({ _modifiers: newMod.modifiers, context, extraTags });
+
+        const item = message.item ?? (await fromUuid(message?.flags?.pf2e?.origin?.uuid));
+
+        const tags = createTagFlavor({ _modifiers: newMod.modifiers, traits: context.traits, item , type:message.flags.pf2e.context.type, extraTags });
         const title = (context.title ?? check.slug).trim();
         const header = title.startsWith("<h4")
             ? title
@@ -196,27 +197,6 @@ async function rollLogic(event, message, _ignore, traitName) {
 
     console.log(`${traitName} was added`)
 }
-
-function adjustDegreeByDieValue(dieResult, degree) {
-    if (dieResult === 20) {
-        return degree + 1;
-    } else if (dieResult === 1) {
-        return degree - 1;
-    }
-    return degree;
-}
-
-function calculateDegreeOfSuccess(dc, rollTotal, dieResult) {
-    if (rollTotal - dc >= 10) {
-        return adjustDegreeByDieValue(dieResult, 3);
-    } else if (dc - rollTotal >= 10) {
-        return adjustDegreeByDieValue(dieResult, 0);
-    } else if (rollTotal >= dc) {
-        return adjustDegreeByDieValue(dieResult, 2);
-    }
-    return adjustDegreeByDieValue(dieResult, 1);
-}
-
 function sluggify(text, { camel = null } = {})  {
     // Sanity check
     if (typeof text !== "string") {
@@ -505,7 +485,7 @@ async function createResultFlavor({ degree, target }) {
     return html;
 }
 
-function createTagFlavor({ _modifiers, context, extraTags }) {
+function createTagFlavor({ _modifiers, traits, item, type, extraTags }) {
     const toTagElement = (tag, cssClass = null) => {
         const span = document.createElement("span");
         span.classList.add("tag");
@@ -519,18 +499,16 @@ function createTagFlavor({ _modifiers, context, extraTags }) {
         return span;
     };
 
-    const traits =
-            [...new Set((context.traits?.map((trait) => {
-                    trait.label = game.i18n.localize(trait.label);
-                    return trait;
-                }) ?? []).map(item => item.name))
-            ]
+    const cTraits =
+            (traits?.map((trait) => {
+                trait.label = game.i18n.localize(trait.label);
+                return trait;
+            }) ?? new Set())
             .sort((a, b) => a.label.localeCompare(b.label, game.i18n.lang))
             .map((t) => toTagElement(t)) ?? [];
 
-    const { item } = context;
     const itemTraits =
-        item?.isOfType("weapon", "melee") && context.type !== "saving-throw"
+        item?.isOfType("weapon", "melee") && type !== "saving-throw"
             ? Array.from(item.traits)
                   .map((t) => {
                       const obj = traitSlugToObject(t, CONFIG.PF2E.npcAttackTraits);
@@ -559,11 +537,11 @@ function createTagFlavor({ _modifiers, context, extraTags }) {
         dataset: { tooltipClass: "pf2e" },
     });
     if (itemTraits.length === 0 && properties.length === 0) {
-        traitsAndProperties.append(...traits);
+        traitsAndProperties.append(...cTraits);
     } else {
         const verticalBar = document.createElement("hr");
         verticalBar.className = "vr";
-        traitsAndProperties.append(...[traits, verticalBar, itemTraits, properties].flat());
+        traitsAndProperties.append(...[cTraits, verticalBar, itemTraits, properties].flat());
     }
 
     const modifiers = _modifiers
@@ -636,4 +614,16 @@ function noteToHTML(n) {
     }
 
     return element;
+}
+
+function traitSlugToObject(trait, dictionary) {
+    const traitObject = {
+        name: trait,
+        label: game.i18n.localize(dictionary[trait] ?? trait),
+    };
+    if (trait in CONFIG.PF2E.traitsDescriptions) {
+        traitObject.description = CONFIG.PF2E.traitsDescriptions[trait];
+    }
+
+    return traitObject;
 }

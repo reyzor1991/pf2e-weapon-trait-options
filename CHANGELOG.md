@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.3
+- Fix traits
+
 ## Version 0.0.2
 - Sweep trait
 
