@@ -26,161 +26,7 @@ Hooks.on("renderChatMessage", async (message, html) => {
 
     if (!message.flags.pf2e.modifiers.find(a=>a.slug==="backswing" && a.enabled) && !_ignore.includes('backswing')) {
         let button = $(`<button class="backswing" data-tooltip="PF2E.TraitDescriptionBackswing">Apply Backswing</button>`)
-        button.click(async (e) => {
-            let systemFlags = message.flags.pf2e;
-            let mods = [...systemFlags.modifiers];
-
-            let _e = mods.find(a=>a.slug==="backswing");
-            _e.enabled = true;
-            _e.ignored = false;
-
-            let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, mods);
-
-            let roll = message.rolls[0];
-            let n = roll.terms.find(a=>a instanceof NumericTerm);
-            if (n) {
-                n.number = newMod.totalModifier
-            } else {
-                roll.terms.push(new OperatorTerm({operator:"+"}))
-                roll.terms.push(new NumericTerm({number: newMod.totalModifier}))
-            }
-            roll._evaluated = false
-            roll.options.totalModifier = newMod.totalModifier;
-
-            roll.resetFormula()
-            roll.evaluate()
-
-
-            let context = systemFlags.context;
-            context.options.push('backswing-bonus');
-
-            const substitutions = (context.substitutions ??= []);
-            const requiredSubstitution = context.substitutions.find((s) => s.required && s.selected);
-            if (requiredSubstitution) {
-                for (const substitution of context.substitutions) {
-                    substitution.required = substitution === requiredSubstitution;
-                    substitution.selected = substitution === requiredSubstitution;
-                }
-            }
-
-            let extraTags = []
-            const rollOptions = context.options ? new Set(context.options): new Set();
-
-            const tagsFromDice = (() => {
-                const substitution = substitutions.find((s) => s.selected);
-                const rollTwice = context.rollTwice ?? false;
-
-                // Determine whether both fortune and misfortune apply to the check
-                const fortuneMisfortune = new Set(
-                    [
-                        substitution?.effectType,
-                        rollTwice === "keep-higher" ? "fortune" : rollTwice === "keep-lower" ? "misfortune" : null,
-                    ].filter(a=>a),
-                );
-                for (const trait of fortuneMisfortune) {
-                    rollOptions.add(trait);
-                }
-
-                if (rollOptions.has("fortune") && rollOptions.has("misfortune")) {
-                    for (const sub of substitutions) {
-                        // Cancel all roll substitutions and recalculate
-                        rollOptions.delete(`substitute:${sub.slug}`);
-                        check.calculateTotal(rollOptions);
-                    }
-
-                    return ["PF2E.TraitFortune", "PF2E.TraitMisfortune"];
-                } else if (substitution) {
-                    const effectType = {
-                        fortune: "PF2E.TraitFortune",
-                        misfortune: "PF2E.TraitMisfortune",
-                    }[substitution.effectType];
-                    const extraTag = game.i18n.format("PF2E.SpecificRule.SubstituteRoll.EffectType", {
-                        type: game.i18n.localize(effectType),
-                        substitution: reduceItemName(game.i18n.localize(substitution.label)),
-                    });
-
-                    return [extraTag];
-                } else if (context.rollTwice === "keep-lower") {
-                    return ["PF2E.TraitMisfortune"];
-                } else if (context.rollTwice === "keep-higher") {
-                    return ["PF2E.TraitFortune"];
-                } else {
-                    return [];
-                }
-            })();
-            extraTags.push(...tagsFromDice);
-
-            const dosAdjustments = (() => {
-                if (context.dc === null || context.dc === undefined) return {};
-
-                const naturalTotal =
-                    roll.dice.map((d) => d.results.find((r) => r.active && !r.discarded)?.result ?? null).filter(a=>a).shift();
-
-                // Include tentative results in case an adjustment is predicated on it
-                const temporaryRollOptions = new Set([
-                    ...rollOptions,
-                    `check:total:${roll.total}`,
-                    `check:total:natural:${naturalTotal}`,
-                ]);
-
-                return preDosAdjustments(new Set(message.flags.pf2e.context.options), message.actor, message.flags.pf2e.context.domains)
-                    ?.filter((a) => a.predicate?.test(temporaryRollOptions) ?? true)
-                    .reduce((record, data) => {
-                        for (const outcome of ["all", ...DEGREE_OF_SUCCESS_STRINGS]) {
-                            if (data.adjustments[outcome]) {
-                                record[outcome] = deepClone(data.adjustments[outcome]);
-                            }
-                        }
-                        return record;
-                    }, {}) ?? {};
-            })();
-
-            const degree = new DegreeOfSuccess(roll, systemFlags?.context?.dc, dosAdjustments);
-            if (degree) {
-                context.outcome = DEGREE_OF_SUCCESS_STRINGS[degree.value];
-                context.unadjustedOutcome = DEGREE_OF_SUCCESS_STRINGS[degree.unadjusted];
-                roll.options.degreeOfSuccess = degree.value;
-            }
-
-            const notesList = createHTMLElement("ul", {
-                classes: ["notes"],
-                children: message.flags.pf2e.context.notes.flatMap((n) => ["\n", noteToHTML(n)]).slice(1),
-            })
-
-            const newFlavor = await (async () => {
-                const result = await createResultFlavor({ degree, target: message.target ?? null });
-                const tags = createTagFlavor({ _modifiers: newMod.modifiers, context, extraTags });
-                const title = (context.title ?? check.slug).trim();
-                const header = title.startsWith("<h4")
-                    ? title
-                    : (() => {
-                          const strong = document.createElement("strong");
-                          strong.innerHTML = title;
-                          return createHTMLElement("h4", { classes: ["action"], children: [strong] });
-                      })();
-
-                return [header, result ?? [], tags, notesList]
-                    .flat()
-                    .map((e) => (typeof e === "string" ? e : e.outerHTML))
-                    .join("");
-            })();
-
-            _ignore.push('backswing');
-            await message.update({
-                'rolls': [roll],
-                content: `${await game.pf2e.Check.renderReroll(roll, {isOld: false})}`,
-                flavor: `${newFlavor}`,
-                speaker: message.speaker,
-                flags: {
-                    pf2e: systemFlags,
-                    [moduleName]: {
-                        'ignore': _ignore
-                    }
-                },
-            });
-
-            console.log('Backswing was added')
-        });
+        button.click((e) => rollLogic(e, message, _ignore, "backswing"));
         buttons.push(button);
     }
 
@@ -189,6 +35,163 @@ Hooks.on("renderChatMessage", async (message, html) => {
         html.find('.traits-buttons').append(buttons)
     }
 });
+
+
+async function rollLogic(event, message, _ignore, traitName) {
+    let systemFlags = message.flags.pf2e;
+    let mods = [...systemFlags.modifiers];
+
+    let _e = mods.find(a=>a.slug===traitName);
+    _e.enabled = true;
+    _e.ignored = false;
+
+    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, mods);
+
+    let roll = message.rolls[0];
+    let n = roll.terms.find(a=>a instanceof NumericTerm);
+    if (n) {
+        n.number = newMod.totalModifier
+    } else {
+        roll.terms.push(new OperatorTerm({operator:"+"}))
+        roll.terms.push(new NumericTerm({number: newMod.totalModifier}))
+    }
+    roll._evaluated = false
+    roll.options.totalModifier = newMod.totalModifier;
+
+    roll.resetFormula()
+    roll.evaluate()
+
+
+    let context = systemFlags.context;
+    context.options.push(traitName+'-bonus');
+
+    const substitutions = (context.substitutions ??= []);
+    const requiredSubstitution = context.substitutions.find((s) => s.required && s.selected);
+    if (requiredSubstitution) {
+        for (const substitution of context.substitutions) {
+            substitution.required = substitution === requiredSubstitution;
+            substitution.selected = substitution === requiredSubstitution;
+        }
+    }
+
+    let extraTags = []
+    const rollOptions = context.options ? new Set(context.options): new Set();
+
+    const tagsFromDice = (() => {
+        const substitution = substitutions.find((s) => s.selected);
+        const rollTwice = context.rollTwice ?? false;
+
+        // Determine whether both fortune and misfortune apply to the check
+        const fortuneMisfortune = new Set(
+            [
+                substitution?.effectType,
+                rollTwice === "keep-higher" ? "fortune" : rollTwice === "keep-lower" ? "misfortune" : null,
+            ].filter(a=>a),
+        );
+        for (const trait of fortuneMisfortune) {
+            rollOptions.add(trait);
+        }
+
+        if (rollOptions.has("fortune") && rollOptions.has("misfortune")) {
+            for (const sub of substitutions) {
+                // Cancel all roll substitutions and recalculate
+                rollOptions.delete(`substitute:${sub.slug}`);
+                check.calculateTotal(rollOptions);
+            }
+
+            return ["PF2E.TraitFortune", "PF2E.TraitMisfortune"];
+        } else if (substitution) {
+            const effectType = {
+                fortune: "PF2E.TraitFortune",
+                misfortune: "PF2E.TraitMisfortune",
+            }[substitution.effectType];
+            const extraTag = game.i18n.format("PF2E.SpecificRule.SubstituteRoll.EffectType", {
+                type: game.i18n.localize(effectType),
+                substitution: reduceItemName(game.i18n.localize(substitution.label)),
+            });
+
+            return [extraTag];
+        } else if (context.rollTwice === "keep-lower") {
+            return ["PF2E.TraitMisfortune"];
+        } else if (context.rollTwice === "keep-higher") {
+            return ["PF2E.TraitFortune"];
+        } else {
+            return [];
+        }
+    })();
+    extraTags.push(...tagsFromDice);
+
+    const dosAdjustments = (() => {
+        if (context.dc === null || context.dc === undefined) return {};
+
+        const naturalTotal =
+            roll.dice.map((d) => d.results.find((r) => r.active && !r.discarded)?.result ?? null).filter(a=>a).shift();
+
+        // Include tentative results in case an adjustment is predicated on it
+        const temporaryRollOptions = new Set([
+            ...rollOptions,
+            `check:total:${roll.total}`,
+            `check:total:natural:${naturalTotal}`,
+        ]);
+
+        return preDosAdjustments(new Set(message.flags.pf2e.context.options), message.actor, message.flags.pf2e.context.domains)
+            ?.filter((a) => a.predicate?.test(temporaryRollOptions) ?? true)
+            .reduce((record, data) => {
+                for (const outcome of ["all", ...DEGREE_OF_SUCCESS_STRINGS]) {
+                    if (data.adjustments[outcome]) {
+                        record[outcome] = deepClone(data.adjustments[outcome]);
+                    }
+                }
+                return record;
+            }, {}) ?? {};
+    })();
+
+    const degree = new DegreeOfSuccess(roll, systemFlags?.context?.dc, dosAdjustments);
+    if (degree) {
+        context.outcome = DEGREE_OF_SUCCESS_STRINGS[degree.value];
+        context.unadjustedOutcome = DEGREE_OF_SUCCESS_STRINGS[degree.unadjusted];
+        roll.options.degreeOfSuccess = degree.value;
+    }
+
+    const notesList = createHTMLElement("ul", {
+        classes: ["notes"],
+        children: message.flags.pf2e.context.notes.flatMap((n) => ["\n", noteToHTML(n)]).slice(1),
+    })
+
+    const newFlavor = await (async () => {
+        const result = await createResultFlavor({ degree, target: message.target ?? null });
+        const tags = createTagFlavor({ _modifiers: newMod.modifiers, context, extraTags });
+        const title = (context.title ?? check.slug).trim();
+        const header = title.startsWith("<h4")
+            ? title
+            : (() => {
+                  const strong = document.createElement("strong");
+                  strong.innerHTML = title;
+                  return createHTMLElement("h4", { classes: ["action"], children: [strong] });
+              })();
+
+        return [header, result ?? [], tags, notesList]
+            .flat()
+            .map((e) => (typeof e === "string" ? e : e.outerHTML))
+            .join("");
+    })();
+
+    _ignore.push(traitName);
+    await message.update({
+        'rolls': [roll],
+        content: `${await game.pf2e.Check.renderReroll(roll, {isOld: false})}`,
+        flavor: `${newFlavor}`,
+        speaker: message.speaker,
+        flags: {
+            pf2e: systemFlags,
+            [moduleName]: {
+                'ignore': _ignore
+            }
+        },
+    });
+
+    console.log(`${traitName} was added`)
+}
 
 function adjustDegreeByDieValue(dieResult, degree) {
     if (dieResult === 20) {
