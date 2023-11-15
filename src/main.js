@@ -17,24 +17,28 @@ const upperOrWordBoundariedLowerRE = new RegExp(`${upperCaseLetter}|(?:${wordBou
 // Backswing
 Hooks.on("renderChatMessage", async (message, html) => {
     if (message.flags?.pf2e?.context?.type != 'attack-roll') {return}
-    if (!message.item?.system?.traits?.value?.includes('backswing')) {return}
     if (!message.target) {return}
     if (!message.target.actor) {return}
 
     let buttons = []
     let _ignore = (message.getFlag(moduleName, 'ignore') ?? [])
 
-    if (!message.flags.pf2e.modifiers.find(a=>a.slug==="backswing" && a.enabled) && !_ignore.includes('backswing')) {
-        let button = $(`<button class="backswing" data-tooltip="PF2E.TraitDescriptionBackswing">Apply Backswing</button>`)
-        button.click((e) => rollLogic(e, message, _ignore, "backswing"));
-        buttons.push(button);
-    }
+    addButton(message, _ignore, buttons, "backswing");
+    addButton(message, _ignore, buttons, "sweep");
 
     if (buttons.length > 0) {
         html.find('.message-buttons').after(`<div class='traits-buttons'></div>`)
         html.find('.traits-buttons').append(buttons)
     }
 });
+
+function addButton(message, _ignore, buttons, name) {
+    if (message.item?.system?.traits?.value?.includes(name) && !message.flags.pf2e.modifiers.find(a=>a.slug===name && a.enabled) && !_ignore.includes(name)) {
+        let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.capitalize()}">Apply ${name.capitalize()}</button>`)
+        button.click((e) => rollLogic(e, message, _ignore, name));
+        buttons.push(button);
+    }
+}
 
 
 async function rollLogic(event, message, _ignore, traitName) {
