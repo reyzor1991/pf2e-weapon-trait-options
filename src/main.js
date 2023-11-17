@@ -70,7 +70,7 @@ async function rollLogic(event, message, _ignore, traitName) {
               item: message.item,
               domains: message.flags.pf2e.context.domains,
               statistic: this,
-              target: message.target.token,
+              target: message.target?.token,
               defense: "armor",
               melee: true,
               options: new Set(message.flags.pf2e.context.options ?? []),
