@@ -65,6 +65,18 @@ async function rollLogic(event, message, _ignore, traitName) {
 
 
     let context = systemFlags.context;
+    const rollContext = await (() => {
+        return message.actor.getCheckContext({
+              item: message.item,
+              domains: message.flags.pf2e.context.domains,
+              statistic: this,
+              target: message.target.token,
+              defense: "armor",
+              melee: true,
+              options: new Set(message.flags.pf2e.context.options ?? []),
+          });
+    })();
+    context.dc = rollContext.dc;
     context.options.push(traitName+'-bonus');
 
     const substitutions = (context.substitutions ??= []);
@@ -148,7 +160,7 @@ async function rollLogic(event, message, _ignore, traitName) {
             }, {}) ?? {};
     })();
 
-    const degree = message.flags.pf2e.context.dc ? new DegreeOfSuccess(roll, systemFlags?.context?.dc, dosAdjustments) : null;
+    const degree = message.flags.pf2e.context.dc ? new DegreeOfSuccess(roll, context?.dc, dosAdjustments) : null;
     if (degree) {
         context.outcome = DEGREE_OF_SUCCESS_STRINGS[degree.value];
         context.unadjustedOutcome = DEGREE_OF_SUCCESS_STRINGS[degree.unadjusted];
@@ -182,6 +194,8 @@ async function rollLogic(event, message, _ignore, traitName) {
     })();
 
     _ignore.push(traitName);
+    delete context.dc;
+
     await message.update({
         'rolls': [roll],
         content: `${await game.pf2e.Check.renderReroll(roll, {isOld: false})}`,
@@ -500,7 +514,7 @@ function createTagFlavor({ _modifiers, traits, item, type, extraTags }) {
     };
 
     const cTraits =
-            (traits?.map((trait) => {
+            (traits?.map((t) => traitSlugToObject(t, CONFIG.PF2E.actionTraits))?.map((trait) => {
                 trait.label = game.i18n.localize(trait.label);
                 return trait;
             }) ?? new Set())
@@ -626,4 +640,14 @@ function traitSlugToObject(trait, dictionary) {
     }
 
     return traitObject;
+}
+
+function signedInteger(value, { emptyStringZero = false } = {}) {
+    if (value === 0 && emptyStringZero) return "";
+
+    const nf = (new Intl.NumberFormat(game.i18n.lang, {
+        maximumFractionDigits: 0,
+        signDisplay: "always",
+    }));
+    return nf.format(value);
 }

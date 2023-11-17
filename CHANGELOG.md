@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.4
+- Fix applying bonus
+
 ## Version 0.0.3
 - Fix traits
 
