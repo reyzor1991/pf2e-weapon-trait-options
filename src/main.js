@@ -198,7 +198,7 @@ async function rollLogic(event, message, _ignore, traitName) {
 
     await message.update({
         'rolls': [roll],
-        content: `${await game.pf2e.Check.renderReroll(roll, {isOld: false})}`,
+        content: `${roll.total}`,
         flavor: `${newFlavor}`,
         speaker: message.speaker,
         flags: {

@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.5
+- Fix rendering html
+
 ## Version 0.0.4
 - Fix applying bonus
 
