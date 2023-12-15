@@ -15,6 +15,7 @@ const upperOrWordBoundariedLowerRE = new RegExp(`${upperCaseLetter}|(?:${wordBou
 
 
 // Backswing
+// sweep
 Hooks.on("renderChatMessage", async (message, html) => {
     if (message.flags?.pf2e?.context?.type != 'attack-roll') {return}
 
@@ -30,6 +31,22 @@ Hooks.on("renderChatMessage", async (message, html) => {
     }
 });
 
+// forcefull
+Hooks.on("renderChatMessage", async (message, html) => {
+    if (message.flags?.pf2e?.context?.type != 'damage-roll') {return}
+
+    let buttons = []
+    let _ignore = (message.getFlag(moduleName, 'ignore') ?? [])
+
+    addDamageButton(message, _ignore, buttons, "forceful", addForceful);
+    addDamageButton(message, _ignore, buttons, "forceful", addForcefulMulti, "Forceful x2");
+
+    if (buttons.length > 0) {
+        html.find('.damage-application').first().before(`<div class='traits-buttons'></div>`)
+        html.find('.traits-buttons').append(buttons)
+    }
+});
+
 function addButton(message, _ignore, buttons, name) {
     if (message.item?.system?.traits?.value?.includes(name) && !message.flags.pf2e.modifiers.find(a=>a.slug===name && a.enabled) && !_ignore.includes(name)) {
         let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.capitalize()}">Apply ${name.capitalize()}</button>`)
@@ -38,6 +55,67 @@ function addButton(message, _ignore, buttons, name) {
     }
 }
 
+function addDamageButton(message, _ignore, buttons, name, callBtn, newName=undefined) {
+    if (message.item?.system?.traits?.value?.includes(name) && !message.flags.pf2e.modifiers.find(a=>a.slug===name && a.enabled) && !_ignore.includes(name)) {
+        let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.capitalize()}">Apply ${newName ?? name.capitalize()}</button>`)
+        button.click((e) => callBtn(e, message, _ignore, name));
+        buttons.push(button);
+    }
+}
+
+async function addForcefulMulti(event, message, _ignore, traitName) {
+    await addForceful(event, message, _ignore, traitName, 2)
+}
+
+async function addForceful(event, message, _ignore, traitName, multiplier=1) {
+    let roll = message.rolls[0];
+    roll.options.damage.damage.modifiers.push(
+        {type: "circumstance", slug: "forceful", modifier: message.item.system.damage.dice * multiplier, enabled: true, ignored: false, predicate: ["item:trait:forceful"], source: message.item?.uuid, kind: "modifier"}
+    )
+
+    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, roll.options.damage.damage.modifiers);
+
+    let grouping = roll.terms[0].rolls[0].terms[0];
+
+    let groupBase = roll.options.degreeOfSuccess === 3
+        ? grouping.term.operands.find(a=>a.constructor.name === 'Grouping').term.operands
+        : grouping.term.operands
+
+    let n = groupBase.find(a=>a instanceof NumericTerm);
+    if (n) {
+        n.number = newMod.totalModifier
+    } else {
+        groupBase.push(new NumericTerm({number: newMod.totalModifier}))
+    }
+    roll.terms[0].rolls[0].resetFormula()
+    roll.terms[0].terms = roll.terms[0].rolls.map((r) => r._formula)
+
+
+
+    grouping.term._evaluated = false
+    grouping.term.evaluate()
+
+    roll.terms[0].rolls[0]._evaluated = false
+    roll.terms[0].rolls[0].evaluate()
+
+    roll.terms[0].results[roll.terms[0].results.length-1].result = roll.terms[0].rolls[0].total
+    roll.terms[0].terms = roll.terms[0].rolls.map((r) => r._formula)
+
+    roll._evaluated = false
+    roll.resetFormula()
+    roll.evaluate()
+
+    _ignore.push(traitName);
+    await message.update({
+        'rolls': [roll],
+        content: `${roll.total}`,
+        flags: {
+            [moduleName]: {
+                'ignore': _ignore
+            }
+        },
+    });
+}
 
 async function rollLogic(event, message, _ignore, traitName) {
     let systemFlags = message.flags.pf2e;

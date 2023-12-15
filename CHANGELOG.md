@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.6
+- Forceful trait (without adding modifiers)
+
 ## Version 0.0.5
 - Fix rendering html
 
