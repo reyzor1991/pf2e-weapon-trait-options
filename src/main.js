@@ -729,3 +729,51 @@ function signedInteger(value, { emptyStringZero = false } = {}) {
     }));
     return nf.format(value);
 }
+
+function adjustDegreeByDieValue(dieResult, degree) {
+    if (dieResult === 20) {
+        return Math.clamped(degree + 1, 0, 3);
+    } else if (dieResult === 1) {
+        return Math.clamped(degree - 1, 0, 3);
+    }
+    return Math.clamped(degree, 0, 3);
+}
+
+function calculateDegreeOfSuccess(dc, rollTotal, dieResult) {
+    if (rollTotal - dc >= 10) {
+        return adjustDegreeByDieValue(dieResult, 3);
+    } else if (dc - rollTotal >= 10) {
+        return adjustDegreeByDieValue(dieResult, 0);
+    } else if (rollTotal >= dc) {
+        return adjustDegreeByDieValue(dieResult, 2);
+    }
+    return adjustDegreeByDieValue(dieResult, 1);
+}
+
+async function nudgeFate(message) {
+    if (!game.user.isGM) {return}
+    if (!game.actionsupportengine.anyFailureMessageOutcome(message)) {return}
+    if (game.actionsupportengine.isCorrectMessageType(message, "saving-throw")
+        || game.actionsupportengine.isCorrectMessageType(message, "attack-roll")
+        || game.actionsupportengine.isCorrectMessageType(message, "skill-check")
+    ) {
+        if (!message.flags.pf2e.modifiers.find(a=>a.slug==='nudge-fate')) {return}
+
+        const rr = message.rolls[0];
+        let dc = message?.flags?.pf2e?.context?.dc.value
+        if (!dc || !rr) {return}
+
+        const newR = calculateDegreeOfSuccess(dc, rr._total + 1, rr.dice[0].total)
+        if (rr.degreeOfSuccess !== newR) {
+            console.log('activate nudgeFate')
+            console.log(`New - ${newR}, old ${rr.degreeOfSuccess}. Total ${rr._total}, dice: ${rr.dice[0].total}`)
+            rollLogic({}, message, [], 'nudge-fate')
+            ui.notifications.info(`Nudge Fate effect was activated`);
+            message.actor.itemTypes.effect.find((a) => a.slug === "effect-nudge-fate")?.delete()
+        }
+    }
+}
+
+Hooks.on("createChatMessage", async (message, user, _options, userId) => {
+    await nudgeFate(message)
+});

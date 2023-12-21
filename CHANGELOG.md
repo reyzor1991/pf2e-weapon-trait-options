@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.7
+- Handle Nudge Fate modifier
+
 ## Version 0.0.6
 - Forceful trait (without adding modifiers)
 
