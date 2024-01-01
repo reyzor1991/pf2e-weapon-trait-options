@@ -73,32 +73,33 @@ async function addForceful(event, message, _ignore, traitName, multiplier=1) {
         {type: "circumstance", slug: "forceful", modifier: message.item.system.damage.dice * multiplier, enabled: true, ignored: false, predicate: ["item:trait:forceful"], source: message.item?.uuid, kind: "modifier"}
     )
 
-    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, roll.options.damage.damage.modifiers);
+    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, roll.options.damage.damage.modifiers.filter(a=>!a.damageType || a.damageType === message.item.system.damage.damageType));
 
-    let grouping = roll.terms[0].rolls[0].terms[0];
+    let base = roll.terms[0].rolls[0].terms[0];
 
-    let groupBase = roll.options.degreeOfSuccess === 3
-        ? grouping.term.operands.find(a=>a.constructor.name === 'Grouping').term.operands
-        : grouping.term.operands
+    let n = base instanceof NumericTerm
+        ? base
+        : findGrouping(base)
 
-    let n = groupBase.find(a=>a instanceof NumericTerm);
     if (n) {
         n.number = newMod.totalModifier
-    } else {
-        groupBase.push(new NumericTerm({number: newMod.totalModifier}))
     }
+
     roll.terms[0].rolls[0].resetFormula()
     roll.terms[0].terms = roll.terms[0].rolls.map((r) => r._formula)
 
-
-
-    grouping.term._evaluated = false
-    grouping.term.evaluate()
+    if (base instanceof NumericTerm) {
+        base._evaluated = false
+        base.evaluate()
+    } else {
+        base.term._evaluated = false
+        base.term.evaluate()
+    }
 
     roll.terms[0].rolls[0]._evaluated = false
     roll.terms[0].rolls[0].evaluate()
 
-    roll.terms[0].results[roll.terms[0].results.length-1].result = roll.terms[0].rolls[0].total
+    roll.terms[0].results = roll.terms[0].rolls.map(a=> { return { active: true, result: a.total } } )
     roll.terms[0].terms = roll.terms[0].rolls.map((r) => r._formula)
 
     roll._evaluated = false
@@ -115,6 +116,23 @@ async function addForceful(event, message, _ignore, traitName, multiplier=1) {
             }
         },
     });
+}
+
+function findGrouping(g) {
+    let n = g.term.operands.find(a=>a instanceof NumericTerm);
+    if (n) {
+        return n;
+    }
+
+    let ae = g.term.operands.find(a=>a=>a.constructor.name === 'ArithmeticExpression')
+    if (!ae) {
+        return undefined
+    }
+    let gg = ae?.operands?.find(a=>a.constructor.name === 'Grouping')
+    if (gg) {
+        return findGrouping(gg)
+    }
+    return undefined
 }
 
 async function rollLogic(event, message, _ignore, traitName) {

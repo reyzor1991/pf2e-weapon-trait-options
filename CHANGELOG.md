@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.8
+- Optimize Forceful trait
+
 ## Version 0.0.7
 - Handle Nudge Fate modifier
 
