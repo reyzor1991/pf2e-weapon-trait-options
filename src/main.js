@@ -38,8 +38,10 @@ Hooks.on("renderChatMessage", async (message, html) => {
     let buttons = []
     let _ignore = (message.getFlag(moduleName, 'ignore') ?? [])
 
-    addDamageButton(message, _ignore, buttons, "forceful", addForceful);
-    addDamageButton(message, _ignore, buttons, "forceful", addForcefulMulti, "Forceful x2");
+    if (message.flags.pf2e?.context?.options?.includes('map:increases:1') || message.flags.pf2e?.context?.options?.includes('map:increases:2')) {
+        addDamageButton(message, _ignore, buttons, "forceful", addForceful);
+        addDamageButton(message, _ignore, buttons, "forceful", addForcefulMulti, "Forceful x2");
+    }
 
     if (buttons.length > 0) {
         html.find('.damage-application').first().before(`<div class='traits-buttons'></div>`)

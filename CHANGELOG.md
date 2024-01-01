@@ -2,6 +2,7 @@
 
 ## Version 0.0.8
 - Optimize Forceful trait
+- Add Forceful only to MAP rolls
 
 ## Version 0.0.7
 - Handle Nudge Fate modifier
