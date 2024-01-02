@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.9
+- Check MAP Forceful trait
+
 ## Version 0.0.8
 - Optimize Forceful trait
 - Add Forceful only to MAP rolls
