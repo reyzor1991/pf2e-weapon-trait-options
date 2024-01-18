@@ -71,35 +71,43 @@ async function addForcefulMulti(event, message, _ignore, traitName) {
 
 async function addForceful(event, message, _ignore, traitName, multiplier=1) {
     let roll = message.rolls[0];
+    let isCrit = roll?.options?.degreeOfSuccess === 3;
     roll.options.damage.damage.modifiers.push(
         {type: "circumstance", slug: "forceful", modifier: message.item.system.damage.dice * multiplier, enabled: true, ignored: false, predicate: ["item:trait:forceful"], source: message.item?.uuid, kind: "modifier"}
     )
 
-    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, roll.options.damage.damage.modifiers.filter(a=>!a.damageType || a.damageType === message.item.system.damage.damageType));
+    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, roll.options.damage.damage.modifiers
+        .filter(a=>!a.damageType || a.damageType === message.item.system.damage.damageType)
+        .filter(a=>a.damageCategory != "precision")
+    );
 
-    let base = roll.terms[0].rolls[0].terms[0];
+    let base = roll.terms[0].rolls[0];
+    let baseTerms = isCrit ? base.terms[0].term.operands.find(a=>a.constructor.name === 'Grouping') : base.terms[0];
 
-    let n = base instanceof NumericTerm
-        ? base
-        : findGrouping(base)
+    if (baseTerms.constructor.name === "Grouping") {
+        let ae = baseTerms.term.operands.find(a=>a.constructor.name === 'ArithmeticExpression')
+        let insideNumber = baseTerms.term.operands.find(a=>a instanceof NumericTerm)
+        if (ae) {
+            let nValue = ae.operands.find(a=>a instanceof NumericTerm);
+            if (nValue) {
+                nValue.number = newMod.totalModifier;
+                nValue._evaluated = false
+                nValue.evaluate()
+            }
+            ae._evaluated = false
+            ae.evaluate()
+        } else if (insideNumber) {
+            insideNumber.number = newMod.totalModifier;
+            insideNumber._evaluated = false
+            insideNumber.evaluate()
+        }
 
-    if (n) {
-        n.number = newMod.totalModifier
+        baseTerms._evaluated = false
+        baseTerms.evaluate()
     }
-
-    roll.terms[0].rolls[0].resetFormula()
-    roll.terms[0].terms = roll.terms[0].rolls.map((r) => r._formula)
-
-    if (base instanceof NumericTerm) {
-        base._evaluated = false
-        base.evaluate()
-    } else {
-        base.term._evaluated = false
-        base.term.evaluate()
-    }
-
-    roll.terms[0].rolls[0]._evaluated = false
-    roll.terms[0].rolls[0].evaluate()
+    base._evaluated = false
+    base.resetFormula()
+    base.evaluate()
 
     roll.terms[0].results = roll.terms[0].rolls.map(a=> { return { active: true, result: a.total } } )
     roll.terms[0].terms = roll.terms[0].rolls.map((r) => r._formula)

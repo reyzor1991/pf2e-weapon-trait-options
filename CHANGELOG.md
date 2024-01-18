@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.10
+- Fix calculate Forceful
+
 ## Version 0.0.9
 - Check MAP Forceful trait
 
