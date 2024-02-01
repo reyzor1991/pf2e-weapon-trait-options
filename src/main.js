@@ -39,8 +39,14 @@ Hooks.on("renderChatMessage", async (message, html) => {
     let _ignore = (message.getFlag(moduleName, 'ignore') ?? [])
 
     if (message.flags.pf2e?.context?.mapIncreases || message.flags.pf2e?.context?.options?.includes('map:increases:1') || message.flags.pf2e?.context?.options?.includes('map:increases:2')) {
-        addDamageButton(message, _ignore, buttons, "forceful", addForceful);
-        addDamageButton(message, _ignore, buttons, "forceful", addForcefulMulti, "Forceful x2");
+        if (message.item?.system?.traits?.value?.includes('forceful')
+            && !message.flags.pf2e.modifiers.find(a=>a.slug==='forceful-second' && a.enabled)
+            && !message.flags.pf2e.modifiers.find(a=>a.slug==='forceful-third' && a.enabled)
+            && !_ignore.includes(name)
+        ) {
+            addDamageButton(message, _ignore, buttons, "forceful-second", addForceful, "Forceful 2nd Attack");
+            addDamageButton(message, _ignore, buttons, "forceful-third", addForceful, "Forceful 3rd+ Attack");
+        }
     }
 
     if (buttons.length > 0) {
@@ -51,38 +57,40 @@ Hooks.on("renderChatMessage", async (message, html) => {
 
 function addButton(message, _ignore, buttons, name) {
     if (message.item?.system?.traits?.value?.includes(name) && !message.flags.pf2e.modifiers.find(a=>a.slug===name && a.enabled) && !_ignore.includes(name)) {
-        let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.capitalize()}">Apply ${name.capitalize()}</button>`)
+        let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.split('-')[0].capitalize()}">Apply ${name.capitalize()}</button>`)
         button.click((e) => rollLogic(e, message, _ignore, name));
         buttons.push(button);
     }
 }
 
 function addDamageButton(message, _ignore, buttons, name, callBtn, newName=undefined) {
-    if (message.item?.system?.traits?.value?.includes(name) && !message.flags.pf2e.modifiers.find(a=>a.slug===name && a.enabled) && !_ignore.includes(name)) {
-        let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.capitalize()}">Apply ${newName ?? name.capitalize()}</button>`)
-        button.click((e) => callBtn(e, message, _ignore, name));
-        buttons.push(button);
-    }
+    let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.split('-')[0].capitalize()}">Apply ${newName ?? name.capitalize()}</button>`)
+    button.click((e) => callBtn(e, message, _ignore, name));
+    buttons.push(button);
 }
 
-async function addForcefulMulti(event, message, _ignore, traitName) {
-    await addForceful(event, message, _ignore, traitName, 2)
-}
+async function addForceful(event, message, _ignore, traitName) {
+    let systemFlags = message.flags.pf2e;
+    let mods = [...systemFlags.modifiers];
 
-async function addForceful(event, message, _ignore, traitName, multiplier=1) {
+    let _e = mods.find(a=>a.slug===traitName);
+    _e.enabled = true;
+    _e.ignored = false;
+
     let roll = message.rolls[0];
     let isCrit = roll?.options?.degreeOfSuccess === 3;
-    roll.options.damage.damage.modifiers.push(
-        {type: "circumstance", slug: "forceful", modifier: message.item.system.damage.dice * multiplier, enabled: true, ignored: false, predicate: ["item:trait:forceful"], source: message.item?.uuid, kind: "modifier"}
-    )
 
-    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, roll.options.damage.damage.modifiers
-        .filter(a=>!a.damageType || a.damageType === message.item.system.damage.damageType)
-        .filter(a=>a.damageCategory != "precision")
-    );
+    roll.options.damage.damage.modifiers.find(a=>a.slug===traitName).ignored = false;
+    roll.options.damage.damage.modifiers.find(a=>a.slug===traitName).enabled = true;
+    roll.options.damage.modifiers.find(a=>a.slug===traitName).ignored = false;
+    roll.options.damage.modifiers.find(a=>a.slug===traitName).enabled = true;
+
+    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, roll.options.damage.damage.modifiers);
 
     let base = roll.terms[0].rolls[0];
-    let baseTerms = isCrit ? base.terms[0].term.operands.find(a=>a.constructor.name === 'Grouping') : base.terms[0];
+    let baseTerms = isCrit
+        ? (base.terms[0].term.operands.find(a=>a.constructor.name === 'Grouping') ?? base.terms[0].term.operands.find(a=>a.constructor.name === 'ArithmeticExpression')?.operands?.find(a=>a.constructor.name === 'Grouping') )
+        : base.terms[0];
 
     if (baseTerms.constructor.name === "Grouping") {
         let ae = baseTerms.term.operands.find(a=>a.constructor.name === 'ArithmeticExpression')
@@ -121,28 +129,12 @@ async function addForceful(event, message, _ignore, traitName, multiplier=1) {
         'rolls': [roll],
         content: `${roll.total}`,
         flags: {
+            pf2e: systemFlags,
             [moduleName]: {
                 'ignore': _ignore
             }
         },
     });
-}
-
-function findGrouping(g) {
-    let n = g.term.operands.find(a=>a instanceof NumericTerm);
-    if (n) {
-        return n;
-    }
-
-    let ae = g.term.operands.find(a=>a=>a.constructor.name === 'ArithmeticExpression')
-    if (!ae) {
-        return undefined
-    }
-    let gg = ae?.operands?.find(a=>a.constructor.name === 'Grouping')
-    if (gg) {
-        return findGrouping(gg)
-    }
-    return undefined
 }
 
 async function rollLogic(event, message, _ignore, traitName) {
@@ -168,7 +160,6 @@ async function rollLogic(event, message, _ignore, traitName) {
 
     roll.resetFormula()
     roll.evaluate()
-
 
     let context = systemFlags.context;
     const rollContext = await (() => {
@@ -216,7 +207,6 @@ async function rollLogic(event, message, _ignore, traitName) {
             for (const sub of substitutions) {
                 // Cancel all roll substitutions and recalculate
                 rollOptions.delete(`substitute:${sub.slug}`);
-                check.calculateTotal(rollOptions);
             }
 
             return ["PF2E.TraitFortune", "PF2E.TraitMisfortune"];
@@ -284,7 +274,7 @@ async function rollLogic(event, message, _ignore, traitName) {
         const item = message.item ?? (await fromUuid(message?.flags?.pf2e?.origin?.uuid));
 
         const tags = createTagFlavor({ _modifiers: newMod.modifiers, traits: context.traits, item , type:message.flags.pf2e.context.type, extraTags });
-        const title = (context.title ?? check.slug).trim();
+        const title = (context.title ?? "check.slug").trim();
         const header = title.startsWith("<h4")
             ? title
             : (() => {
@@ -317,6 +307,7 @@ async function rollLogic(event, message, _ignore, traitName) {
 
     console.log(`${traitName} was added`)
 }
+
 function sluggify(text, { camel = null } = {})  {
     // Sanity check
     if (typeof text !== "string") {

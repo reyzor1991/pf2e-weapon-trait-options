@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.11
+- Update Forceful logic
+
 ## Version 0.0.10
 - Fix calculate Forceful
 
