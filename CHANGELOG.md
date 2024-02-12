@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.12
+- Move to dropbox
+
 ## Version 0.0.11
 - Update Forceful logic
 
