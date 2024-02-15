@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.13
+- Adapt forceful only number
+
 ## Version 0.0.12
 - Move to dropbox
 

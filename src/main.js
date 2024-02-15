@@ -112,6 +112,8 @@ async function addForceful(event, message, _ignore, traitName) {
 
         baseTerms._evaluated = false
         baseTerms.evaluate()
+    } else if (baseTerms instanceof NumericTerm) {
+        baseTerms.number = newMod.totalModifier;
     }
     base._evaluated = false
     base.resetFormula()
