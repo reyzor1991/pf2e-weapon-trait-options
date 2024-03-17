@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.14
+- Fix Nudge Fate
+
 ## Version 0.0.13
 - Adapt forceful only number
 

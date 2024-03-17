@@ -773,10 +773,10 @@ function calculateDegreeOfSuccess(dc, rollTotal, dieResult) {
 
 async function nudgeFate(message) {
     if (!game.user.isGM) {return}
-    if (!game.actionsupportengine.anyFailureMessageOutcome(message)) {return}
-    if (game.actionsupportengine.isCorrectMessageType(message, "saving-throw")
-        || game.actionsupportengine.isCorrectMessageType(message, "attack-roll")
-        || game.actionsupportengine.isCorrectMessageType(message, "skill-check")
+    if (!anyFailureMessageOutcome(message)) {return}
+    if (isCorrectMessageType(message, "saving-throw")
+        || isCorrectMessageType(message, "attack-roll")
+        || isCorrectMessageType(message, "skill-check")
     ) {
         if (!message.flags.pf2e.modifiers.find(a=>a.slug==='nudge-fate')) {return}
 
@@ -786,13 +786,31 @@ async function nudgeFate(message) {
 
         const newR = calculateDegreeOfSuccess(dc, rr._total + 1, rr.dice[0].total)
         if (rr.degreeOfSuccess !== newR) {
-            console.log('activate nudgeFate')
-            console.log(`New - ${newR}, old ${rr.degreeOfSuccess}. Total ${rr._total}, dice: ${rr.dice[0].total}`)
             rollLogic({}, message, [], 'nudge-fate')
             ui.notifications.info(`Nudge Fate effect was activated`);
             message.actor.itemTypes.effect.find((a) => a.slug === "effect-nudge-fate")?.delete()
         }
     }
+};
+
+function anyFailureMessageOutcome(message) {
+    return failureMessageOutcome(message) || criticalFailureMessageOutcome(message);
+}
+
+function failureMessageOutcome(message) {
+    return "failure" === message?.flags?.pf2e?.context?.outcome;
+}
+
+function criticalFailureMessageOutcome(message) {
+    return "criticalFailure" === message?.flags?.pf2e?.context?.outcome;
+}
+
+
+function isCorrectMessageType(message, type) {
+    if (type === "undefined") {
+        return undefined === message?.flags?.pf2e?.context?.type;
+    }
+    return type === message?.flags?.pf2e?.context?.type;
 }
 
 Hooks.on("createChatMessage", async (message, user, _options, userId) => {
