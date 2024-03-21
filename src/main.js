@@ -85,7 +85,7 @@ async function addForceful(event, message, _ignore, traitName) {
     roll.options.damage.modifiers.find(a=>a.slug===traitName).ignored = false;
     roll.options.damage.modifiers.find(a=>a.slug===traitName).enabled = true;
 
-    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, roll.options.damage.damage.modifiers);
+    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, roll.options.damage.damage.modifiers.filter(m=>!m.damageType || m.damageType === 'slashing'));
 
     let base = roll.terms[0].rolls[0];
     let baseTerms = isCrit
@@ -771,6 +771,26 @@ function calculateDegreeOfSuccess(dc, rollTotal, dieResult) {
     return adjustDegreeByDieValue(dieResult, 1);
 }
 
+function anyFailureMessageOutcome(message) {
+    return failureMessageOutcome(message) || criticalFailureMessageOutcome(message);
+}
+
+function failureMessageOutcome(message) {
+    return "failure" === message?.flags?.pf2e?.context?.outcome;
+}
+
+function criticalFailureMessageOutcome(message) {
+    return "criticalFailure" === message?.flags?.pf2e?.context?.outcome;
+}
+
+
+function isCorrectMessageType(message, type) {
+    if (type === "undefined") {
+        return undefined === message?.flags?.pf2e?.context?.type;
+    }
+    return type === message?.flags?.pf2e?.context?.type;
+}
+
 async function nudgeFate(message) {
     if (!game.user.isGM) {return}
     if (!anyFailureMessageOutcome(message)) {return}
@@ -792,26 +812,6 @@ async function nudgeFate(message) {
         }
     }
 };
-
-function anyFailureMessageOutcome(message) {
-    return failureMessageOutcome(message) || criticalFailureMessageOutcome(message);
-}
-
-function failureMessageOutcome(message) {
-    return "failure" === message?.flags?.pf2e?.context?.outcome;
-}
-
-function criticalFailureMessageOutcome(message) {
-    return "criticalFailure" === message?.flags?.pf2e?.context?.outcome;
-}
-
-
-function isCorrectMessageType(message, type) {
-    if (type === "undefined") {
-        return undefined === message?.flags?.pf2e?.context?.type;
-    }
-    return type === message?.flags?.pf2e?.context?.type;
-}
 
 Hooks.on("createChatMessage", async (message, user, _options, userId) => {
     await nudgeFate(message)

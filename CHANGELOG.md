@@ -1,6 +1,9 @@
 # Changelog
 
 ## Version 0.0.14
+- Fix Add forceful
+
+## Version 0.0.14
 - Fix Nudge Fate
 
 ## Version 0.0.13
