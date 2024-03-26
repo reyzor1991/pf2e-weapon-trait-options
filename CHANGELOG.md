@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.16
+- Fix Add sweep
+
 ## Version 0.0.14
 - Fix Add forceful
 

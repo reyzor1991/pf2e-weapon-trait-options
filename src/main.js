@@ -164,18 +164,6 @@ async function rollLogic(event, message, _ignore, traitName) {
     roll.evaluate()
 
     let context = systemFlags.context;
-    const rollContext = await (() => {
-        return message.actor.getCheckContext({
-              item: message.item,
-              domains: message.flags.pf2e.context.domains,
-              statistic: this,
-              target: message.target?.token,
-              defense: "armor",
-              melee: true,
-              options: new Set(message.flags.pf2e.context.options ?? []),
-          });
-    })();
-    context.dc = rollContext.dc;
     context.options.push(traitName+'-bonus');
 
     const substitutions = (context.substitutions ??= []);
@@ -236,10 +224,7 @@ async function rollLogic(event, message, _ignore, traitName) {
     const dosAdjustments = (() => {
         if (context.dc === null || context.dc === undefined) return {};
 
-        const naturalTotal =
-            roll.dice.map((d) => d.results.find((r) => r.active && !r.discarded)?.result ?? null).filter(a=>a).shift();
-
-        // Include tentative results in case an adjustment is predicated on it
+        const naturalTotal = roll.dice.map((d) => d.results.find((r) => r.active && !r.discarded)?.result ?? null).filter(a=>a).shift();
         const temporaryRollOptions = new Set([
             ...rollOptions,
             `check:total:${roll.total}`,
@@ -258,7 +243,7 @@ async function rollLogic(event, message, _ignore, traitName) {
             }, {}) ?? {};
     })();
 
-    const degree = message.flags.pf2e.context.dc ? new DegreeOfSuccess(roll, context?.dc, dosAdjustments) : null;
+    const degree = context.dc ? new DegreeOfSuccess(roll, context?.dc, dosAdjustments) : null;
     if (degree) {
         context.outcome = DEGREE_OF_SUCCESS_STRINGS[degree.value];
         context.unadjustedOutcome = DEGREE_OF_SUCCESS_STRINGS[degree.unadjusted];
@@ -519,12 +504,10 @@ async function createResultFlavor({ degree, target }) {
             visible: dc.visible,
         };
 
-        const checkOrAttack = sluggify(dc.scope ?? "Check", { camel: "bactrian" });
-        const locPath = (checkOrAttack, dosKey) =>
-            `PF2E.Check.Result.Degree.${checkOrAttack}.${dosKey}`;
-        const unadjusted = game.i18n.localize(locPath(checkOrAttack, DEGREE_OF_SUCCESS_STRINGS[degree.unadjusted]));
+        const locPath = (dosKey) => `PF2E.Check.Result.Degree.Attack.${dosKey}`;
+        const unadjusted = game.i18n.localize(locPath(DEGREE_OF_SUCCESS_STRINGS[degree.unadjusted]));
         const [adjusted, locKey] = degree.adjustment
-            ? [game.i18n.localize(locPath(checkOrAttack, DEGREE_OF_SUCCESS_STRINGS[degree.value])), "AdjustedLabel"]
+            ? [game.i18n.localize(locPath(DEGREE_OF_SUCCESS_STRINGS[degree.value])), "AdjustedLabel"]
             : [unadjusted, "Label"];
 
         const markup = game.i18n.format(`PF2E.Check.Result.${locKey}`, {
