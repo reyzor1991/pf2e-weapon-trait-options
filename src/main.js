@@ -44,8 +44,7 @@ Hooks.on("renderChatMessage", async (message, html) => {
             && !message.flags.pf2e.modifiers.find(a=>a.slug==='forceful-third' && a.enabled)
             && !_ignore.includes(name)
         ) {
-            addDamageButton(message, _ignore, buttons, "forceful-second", addForceful, "Forceful 2nd Attack");
-            addDamageButton(message, _ignore, buttons, "forceful-third", addForceful, "Forceful 3rd+ Attack");
+            addDamageButton(message, _ignore, buttons, addForceful, 'forceful');
         }
     }
 
@@ -63,14 +62,15 @@ function addButton(message, _ignore, buttons, name) {
     }
 }
 
-function addDamageButton(message, _ignore, buttons, name, callBtn, newName=undefined) {
-    let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.split('-')[0].capitalize()}">Apply ${newName ?? name.capitalize()}</button>`)
-    button.click((e) => callBtn(e, message, _ignore, name));
+function addDamageButton(message, _ignore, buttons, callBtn, name) {
+    let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.split('-')[0].capitalize()}">Apply ${name.capitalize()}</button>`)
+    button.click((e) => callBtn(e, message, _ignore));
     buttons.push(button);
 }
 
-async function addForceful(event, message, _ignore, traitName) {
+async function addForceful(event, message, _ignore) {
     let systemFlags = message.flags.pf2e;
+    let traitName = systemFlags.context.options.includes("map:increases:1") ?  "forceful-second" : "forceful-third";
     let mods = [...systemFlags.modifiers];
 
     let _e = mods.find(a=>a.slug===traitName);
@@ -117,6 +117,7 @@ async function addForceful(event, message, _ignore, traitName) {
     }
     base._evaluated = false
     base.resetFormula()
+    base._total = base?._evaluateTotal() ?? base._total;
     base.evaluate()
 
     roll.terms[0].results = roll.terms[0].rolls.map(a=> { return { active: true, result: a.total } } )
