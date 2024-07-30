@@ -2,7 +2,7 @@
   "id": "pf2e-weapon-trait-options",
   "title": "PF2e Weapon Trait Options",
   "description": "PF2e Weapon Trait Options",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "authors": [
     {
       "name": "Reyzor",
@@ -23,7 +23,7 @@
     "minimum": "11",
     "verified": "12.327"
   },
-  "url": "https://www.patreon.com/Reyzor1991",
+  "url": "https://github.com/reyzor1991/pf2e-wiki/wiki/PF2e-Weapon-Trait-Options",
   "manifest": "https://www.dropbox.com/scl/fi/7r65oiyv5anaya8eo0u31/module.json?rlkey=bl355siisqdjzi6i3j9d08ejp&dl=1",
   "download": "https://www.dropbox.com/scl/fi/kuufn9avbhyi68mkdxfi2/pf2e-weapon-trait-options.zip?rlkey=egcuinzimpx87bxjebvqeq9sy&dl=1",
   "relationships": {
