@@ -776,7 +776,7 @@ function isCorrectMessageType(message, type) {
 }
 
 async function nudgeFate(message) {
-    if (!game.user.isGM) {return}
+    if (!(game.user.isGM && game.user === game.user.activeGM)) {return}
     if (!anyFailureMessageOutcome(message)) {return}
     if (isCorrectMessageType(message, "saving-throw")
         || isCorrectMessageType(message, "attack-roll")
