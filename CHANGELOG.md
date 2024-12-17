@@ -1,5 +1,8 @@
 # Changelog
 
+### Version 0.2.0
+- Non/Lethal roll
+
 ### Version 0.1.3
 - fixes
 

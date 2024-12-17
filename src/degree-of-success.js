@@ -1,21 +1,10 @@
 /** Get the degree of success from a roll and a difficulty class */
 class DegreeOfSuccess {
-    /** The calculated degree of success */
     value;
-
-    /** The degree of success prior to adjustment. If there was no adjustment, it is identical to the `value` */
     unadjusted;
-
-    /** A degree adjustment, usually from some character ability */
     adjustment;
-
-    /** The result of a d20 roll */
     dieResult;
-
-    /** The total of a roll, including the die result and total modifier */
     rollTotal;
-
-    /** The check DC being rolled against */
     dc;
 
     constructor(
@@ -26,8 +15,8 @@ class DegreeOfSuccess {
         if (roll instanceof Roll) {
             this.dieResult =
                 (roll.isDeterministic
-                    ? roll.terms.find((t) => t instanceof NumericTerm)
-                    : roll.dice.find((d) => d instanceof Die && d.faces === 20)
+                        ? roll.terms.find((t) => t instanceof NumericTerm)
+                        : roll.dice.find((d) => d instanceof Die && d.faces === 20)
                 )?.total ?? 1;
             this.rollTotal = roll.total;
         } else {
@@ -35,7 +24,7 @@ class DegreeOfSuccess {
             this.rollTotal = roll.dieValue + roll.modifier;
         }
 
-        this.dc = typeof dc === "number" ? { value: dc } : dc;
+        this.dc = typeof dc === "number" ? {value: dc} : dc;
 
         this.unadjusted = this.#calculateDegreeOfSuccess();
         this.adjustment = this.#getDegreeAdjustment(this.unadjusted, dosAdjustments);
@@ -44,10 +33,10 @@ class DegreeOfSuccess {
             : this.unadjusted;
     }
 
-    static  CRITICAL_FAILURE = 0;
-    static  FAILURE = 1;
-    static  SUCCESS = 2;
-    static  CRITICAL_SUCCESS = 3;
+    static CRITICAL_FAILURE = 0;
+    static FAILURE = 1;
+    static SUCCESS = 2;
+    static CRITICAL_SUCCESS = 3;
 
     #getDegreeAdjustment(
         degree,
@@ -55,16 +44,16 @@ class DegreeOfSuccess {
     ) {
         if (!adjustments) return null;
 
-        for (const outcome of ["all", ...DEGREE_OF_SUCCESS_STRINGS] ) {
-            const { label, amount } = adjustments[outcome] ?? {};
+        for (const outcome of ["all", ...DEGREE_OF_SUCCESS_STRINGS]) {
+            const {label, amount} = adjustments[outcome] ?? {};
             if (
                 amount &&
                 label &&
-                !(degree === DegreeOfSuccess.CRITICAL_SUCCESS && amount === DEGREE_ADJUSTMENT_AMOUNTS.INCREASE) &&
-                !(degree === DegreeOfSuccess.CRITICAL_FAILURE && amount === DEGREE_ADJUSTMENT_AMOUNTS.LOWER) &&
+                !(degree === DegreeOfSuccess.CRITICAL_SUCCESS && amount === 1) &&
+                !(degree === DegreeOfSuccess.CRITICAL_FAILURE && amount === -1) &&
                 (outcome === "all" || DEGREE_OF_SUCCESS_STRINGS.indexOf(outcome) === degree)
             ) {
-                return { label, amount };
+                return {label, amount};
             }
         }
 
@@ -95,9 +84,9 @@ class DegreeOfSuccess {
      */
     #adjustDegreeByDieValue(degree) {
         if (this.dieResult === 20) {
-            return this.#adjustDegreeOfSuccess(DEGREE_ADJUSTMENT_AMOUNTS.INCREASE, degree);
+            return this.#adjustDegreeOfSuccess(1, degree);
         } else if (this.dieResult === 1) {
-            return this.#adjustDegreeOfSuccess(DEGREE_ADJUSTMENT_AMOUNTS.LOWER, degree);
+            return this.#adjustDegreeOfSuccess(-1, degree);
         }
 
         return degree;
@@ -117,23 +106,5 @@ class DegreeOfSuccess {
         return this.#adjustDegreeByDieValue(DegreeOfSuccess.FAILURE);
     }
 }
-
-const DEGREE_ADJUSTMENT_AMOUNTS = {
-    LOWER_BY_TWO: -2,
-    LOWER: -1,
-    INCREASE: 1,
-    INCREASE_BY_TWO: 2,
-    TO_CRITICAL_FAILURE: "criticalFailure",
-    TO_FAILURE: "failure",
-    TO_SUCCESS: "success",
-    TO_CRITICAL_SUCCESS: "criticalSuccess",
-};
-
-const DEGREE_OF_SUCCESS = {
-    CRITICAL_SUCCESS: 3,
-    SUCCESS: 2,
-    FAILURE: 1,
-    CRITICAL_FAILURE: 0,
-};
 
 const DEGREE_OF_SUCCESS_STRINGS = ["criticalFailure", "failure", "success", "criticalSuccess"];

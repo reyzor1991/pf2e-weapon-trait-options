@@ -1,47 +1,38 @@
 const moduleName = "pf2e-weapon-trait-options";
 
-const wordCharacter = String.raw`[\p{Alphabetic}\p{Mark}\p{Decimal_Number}\p{Join_Control}]`;
-const nonWordCharacter = String.raw`[^\p{Alphabetic}\p{Mark}\p{Decimal_Number}\p{Join_Control}]`;
-const nonWordCharacterRE = new RegExp(nonWordCharacter, "gu");
-
-const wordBoundary = String.raw`(?:${wordCharacter})(?=${nonWordCharacter})|(?:${nonWordCharacter})(?=${wordCharacter})`;
-const nonWordBoundary = String.raw`(?:${wordCharacter})(?=${wordCharacter})`;
-const lowerCaseLetter = String.raw`\p{Lowercase_Letter}`;
-const upperCaseLetter = String.raw`\p{Uppercase_Letter}`;
-const lowerCaseThenUpperCaseRE = new RegExp(`(${lowerCaseLetter})(${upperCaseLetter}${nonWordBoundary})`, "gu");
-
-const nonWordCharacterHyphenOrSpaceRE = /[^-\p{White_Space}\p{Alphabetic}\p{Mark}\p{Decimal_Number}\p{Join_Control}]/gu;
-const upperOrWordBoundariedLowerRE = new RegExp(`${upperCaseLetter}|(?:${wordBoundary})${lowerCaseLetter}`, "gu");
-
-
 // Backswing
 // sweep
 Hooks.on("renderChatMessage", async (message, html) => {
-    if (message.flags?.pf2e?.context?.type != 'attack-roll') {return}
+    if (message.flags?.pf2e?.context?.type !== 'attack-roll') {
+        return
+    }
 
     let buttons = []
     let _ignore = (message.getFlag(moduleName, 'ignore') ?? [])
 
     addButton(message, _ignore, buttons, "backswing");
     addButton(message, _ignore, buttons, "sweep");
+    addButtonLethalBts(message, _ignore, buttons);
 
     if (buttons.length > 0) {
         html.find('.message-buttons').after(`<div class='traits-buttons'></div>`)
         html.find('.traits-buttons').append(buttons)
     }
-});
+})
 
 // forcefull
 Hooks.on("renderChatMessage", async (message, html) => {
-    if (message.flags?.pf2e?.context?.type != 'damage-roll') {return}
+    if (message.flags?.pf2e?.context?.type !== 'damage-roll') {
+        return
+    }
 
     let buttons = []
     let _ignore = (message.getFlag(moduleName, 'ignore') ?? [])
 
     if (message.flags.pf2e?.context?.mapIncreases || message.flags.pf2e?.context?.options?.includes('map:increases:1') || message.flags.pf2e?.context?.options?.includes('map:increases:2')) {
         if (message.item?.system?.traits?.value?.includes('forceful')
-            && !message.flags.pf2e.modifiers.find(a=>a.slug==='forceful-second' && a.enabled)
-            && !message.flags.pf2e.modifiers.find(a=>a.slug==='forceful-third' && a.enabled)
+            && !message.flags.pf2e.modifiers.find(a => a.slug === 'forceful-second' && a.enabled)
+            && !message.flags.pf2e.modifiers.find(a => a.slug === 'forceful-third' && a.enabled)
             && !_ignore.includes(name)
         ) {
             addDamageButton(message, _ignore, buttons, addForceful, 'forceful');
@@ -52,12 +43,25 @@ Hooks.on("renderChatMessage", async (message, html) => {
         html.find('.damage-application').first().before(`<div class='traits-buttons'></div>`)
         html.find('.traits-buttons').append(buttons)
     }
-});
+})
 
 function addButton(message, _ignore, buttons, name) {
-    if (message.item?.system?.traits?.value?.includes(name) && !message.flags.pf2e.modifiers.find(a=>a.slug===name && a.enabled) && !_ignore.includes(name)) {
+    if (message.item?.system?.traits?.value?.includes(name) && !message.flags.pf2e.modifiers.find(a => a.slug === name && a.enabled) && !_ignore.includes(name)) {
         let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.split('-')[0].capitalize()}">Apply ${name.capitalize()}</button>`)
         button.click((e) => rollLogic(e, message, _ignore, name));
+        buttons.push(button);
+    }
+}
+
+function addButtonLethalBts(message, _ignore, buttons) {
+    if (message.item?.system?.traits?.value?.includes("nonlethal") && !_ignore.includes("lethal")) {
+        let button = $(`<button class="${name}" data-tooltip="Add lethal attack">Apply Lethal</button>`)
+        button.click((e) => rollLogic(e, message, _ignore, "lethal"));
+        buttons.push(button);
+    }
+    if (!message.item?.system?.traits?.value?.includes("nonlethal") && !_ignore.includes("nonlethal")) {
+        let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescriptionNonlethal">Apply Nonlethal</button>`)
+        button.click((e) => rollLogic(e, message, _ignore, "nonlethal"));
         buttons.push(button);
     }
 }
@@ -70,33 +74,33 @@ function addDamageButton(message, _ignore, buttons, callBtn, name) {
 
 async function addForceful(event, message, _ignore) {
     let systemFlags = message.flags.pf2e;
-    let traitName = systemFlags.context.options.includes("map:increases:1") ?  "forceful-second" : "forceful-third";
+    let traitName = systemFlags.context.options.includes("map:increases:1") ? "forceful-second" : "forceful-third";
     let mods = [...systemFlags.modifiers];
 
-    let _e = mods.find(a=>a.slug===traitName);
+    let _e = mods.find(a => a.slug === traitName);
     _e.enabled = true;
     _e.ignored = false;
 
     let roll = message.rolls[0];
     let isCrit = roll?.options?.degreeOfSuccess === 3;
 
-    roll.options.damage.damage.modifiers.find(a=>a.slug===traitName).ignored = false;
-    roll.options.damage.damage.modifiers.find(a=>a.slug===traitName).enabled = true;
-    roll.options.damage.modifiers.find(a=>a.slug===traitName).ignored = false;
-    roll.options.damage.modifiers.find(a=>a.slug===traitName).enabled = true;
+    roll.options.damage.damage.modifiers.find(a => a.slug === traitName).ignored = false;
+    roll.options.damage.damage.modifiers.find(a => a.slug === traitName).enabled = true;
+    roll.options.damage.modifiers.find(a => a.slug === traitName).ignored = false;
+    roll.options.damage.modifiers.find(a => a.slug === traitName).enabled = true;
 
-    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, roll.options.damage.damage.modifiers.filter(m=>!m.damageType || m.damageType === 'slashing'));
+    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, roll.options.damage.damage.modifiers.filter(m => !m.damageType || m.damageType === 'slashing'));
 
     let base = roll.terms[0].rolls[0];
     let baseTerms = isCrit
-        ? (base.terms[0].term.operands.find(a=>a.constructor.name === 'Grouping') ?? base.terms[0].term.operands.find(a=>a.constructor.name === 'ArithmeticExpression')?.operands?.find(a=>a.constructor.name === 'Grouping') )
+        ? (base.terms[0].term.operands.find(a => a.constructor.name === 'Grouping') ?? base.terms[0].term.operands.find(a => a.constructor.name === 'ArithmeticExpression')?.operands?.find(a => a.constructor.name === 'Grouping'))
         : base.terms[0];
 
     if (baseTerms.constructor.name === "Grouping") {
-        let ae = baseTerms.term.operands.find(a=>a.constructor.name === 'ArithmeticExpression')
-        let insideNumber = baseTerms.term.operands.find(a=>a instanceof NumericTerm)
+        let ae = baseTerms.term.operands.find(a => a.constructor.name === 'ArithmeticExpression')
+        let insideNumber = baseTerms.term.operands.find(a => a instanceof NumericTerm)
         if (ae) {
-            let nValue = ae.operands.find(a=>a instanceof NumericTerm);
+            let nValue = ae.operands.find(a => a instanceof NumericTerm);
             if (nValue) {
                 nValue.number = newMod.totalModifier;
                 nValue._evaluated = false
@@ -120,7 +124,9 @@ async function addForceful(event, message, _ignore) {
     base._total = base?._evaluateTotal() ?? base._total;
     base.evaluate()
 
-    roll.terms[0].results = roll.terms[0].rolls.map(a=> { return { active: true, result: a.total } } )
+    roll.terms[0].results = roll.terms[0].rolls.map(a => {
+        return {active: true, result: a.total}
+    })
     roll.terms[0].terms = roll.terms[0].rolls.map((r) => r._formula)
 
     roll._evaluated = false
@@ -144,18 +150,28 @@ async function rollLogic(event, message, _ignore, traitName) {
     let systemFlags = message.flags.pf2e;
     let mods = [...systemFlags.modifiers];
 
-    let _e = mods.find(a=>a.slug===traitName);
-    _e.enabled = true;
-    _e.ignored = false;
+    if (traitName === "nonlethal" || traitName === "lethal") {
+        mods.push(new game.pf2e.Modifier({
+            label: `${traitName.split('-')[0].capitalize()}`,
+            slug: traitName,
+            type: "circumstance",
+            modifier: -2,
+            predicate: []
+        }));
+    } else {
+        let _e = mods.find(a => a.slug === traitName);
+        _e.enabled = true;
+        _e.ignored = false;
+    }
 
     let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, mods);
 
     let roll = message.rolls[0];
-    let n = roll.terms.find(a=>a instanceof NumericTerm);
+    let n = roll.terms.find(a => a instanceof NumericTerm);
     if (n) {
         n.number = newMod.totalModifier
     } else {
-        roll.terms.push(new OperatorTerm({operator:"+"}))
+        roll.terms.push(new OperatorTerm({operator: "+"}))
         roll.terms.push(new NumericTerm({number: newMod.totalModifier}))
     }
     roll._evaluated = false
@@ -165,7 +181,7 @@ async function rollLogic(event, message, _ignore, traitName) {
     roll.evaluate()
 
     let context = systemFlags.context;
-    context.options.push(traitName+'-bonus');
+    context.options.push(traitName + '-bonus');
 
     const substitutions = (context.substitutions ??= []);
     const requiredSubstitution = context.substitutions.find((s) => s.required && s.selected);
@@ -177,7 +193,7 @@ async function rollLogic(event, message, _ignore, traitName) {
     }
 
     let extraTags = []
-    const rollOptions = context.options ? new Set(context.options): new Set();
+    const rollOptions = context.options ? new Set(context.options) : new Set();
 
     const tagsFromDice = (() => {
         const substitution = substitutions.find((s) => s.selected);
@@ -188,7 +204,7 @@ async function rollLogic(event, message, _ignore, traitName) {
             [
                 substitution?.effectType,
                 rollTwice === "keep-higher" ? "fortune" : rollTwice === "keep-lower" ? "misfortune" : null,
-            ].filter(a=>a),
+            ].filter(a => a),
         );
         for (const trait of fortuneMisfortune) {
             rollOptions.add(trait);
@@ -225,7 +241,7 @@ async function rollLogic(event, message, _ignore, traitName) {
     const dosAdjustments = (() => {
         if (context.dc === null || context.dc === undefined) return {};
 
-        const naturalTotal = roll.dice.map((d) => d.results.find((r) => r.active && !r.discarded)?.result ?? null).filter(a=>a).shift();
+        const naturalTotal = roll.dice.map((d) => d.results.find((r) => r.active && !r.discarded)?.result ?? null).filter(a => a).shift();
         const temporaryRollOptions = new Set([
             ...rollOptions,
             `check:total:${roll.total}`,
@@ -257,19 +273,25 @@ async function rollLogic(event, message, _ignore, traitName) {
     })
 
     const newFlavor = await (async () => {
-        const result = await createResultFlavor({ degree, target: message.target ?? null });
+        const result = await createResultFlavor({degree, target: message.target ?? null});
 
         const item = message.item ?? (await fromUuid(message?.flags?.pf2e?.origin?.uuid));
 
-        const tags = createTagFlavor({ _modifiers: newMod.modifiers, traits: context.traits, item , type:message.flags.pf2e.context.type, extraTags });
+        const tags = createTagFlavor({
+            _modifiers: newMod.modifiers,
+            traits: context.traits,
+            item,
+            type: message.flags.pf2e.context.type,
+            extraTags
+        });
         const title = (context.title ?? "check.slug").trim();
         const header = title.startsWith("<h4")
             ? title
             : (() => {
-                  const strong = document.createElement("strong");
-                  strong.innerHTML = title;
-                  return createHTMLElement("h4", { classes: ["action"], children: [strong] });
-              })();
+                const strong = document.createElement("strong");
+                strong.innerHTML = title;
+                return createHTMLElement("h4", {classes: ["action"], children: [strong]});
+            })();
 
         return [header, result ?? [], tags, notesList]
             .flat()
@@ -296,42 +318,6 @@ async function rollLogic(event, message, _ignore, traitName) {
     console.log(`${traitName} was added`)
 }
 
-function sluggify(text, { camel = null } = {})  {
-    // Sanity check
-    if (typeof text !== "string") {
-        console.warn("Non-string argument passed to `sluggify`");
-        return "";
-    }
-
-    // A hyphen by its lonesome would be wiped: return it as-is
-    if (text === "-") return text;
-
-    switch (camel) {
-        case null:
-            return text
-                .replace(lowerCaseThenUpperCaseRE, "$1-$2")
-                .toLowerCase()
-                .replace(/['’]/g, "")
-                .replace(nonWordCharacterRE, " ")
-                .trim()
-                .replace(/[-\s]+/g, "-");
-        case "bactrian": {
-            const dromedary = sluggify(text, { camel: "dromedary" });
-            return dromedary.charAt(0).toUpperCase() + dromedary.slice(1);
-        }
-        case "dromedary":
-            return text
-                .replace(nonWordCharacterHyphenOrSpaceRE, "")
-                .replace(/[-_]+/g, " ")
-                .replace(upperOrWordBoundariedLowerRE, (part, index) =>
-                    index === 0 ? part.toLowerCase() : part.toUpperCase(),
-                )
-                .replace(/\s+/g, "");
-        default:
-            throw ErrorPF2e("I don't think that's a real camel.");
-    }
-}
-
 function parseHTML(unparsed) {
     const fragment = document.createElement("template");
     fragment.innerHTML = unparsed;
@@ -353,17 +339,17 @@ function preDosAdjustments(options, selfActor, domains) {
         const effectLevel = item?.isOfType("spell")
             ? 2 * item.rank
             : item?.isOfType("physical")
-            ? item.level
-            : origin?.level ?? selfActor.level;
+                ? item.level
+                : origin?.level ?? selfActor.level;
 
         const amount =
             this.type === "saving-throw" && selfActor.level > effectLevel
-                ? DEGREE_ADJUSTMENT_AMOUNTS.INCREASE
+                ? 1
                 : !!targetActor &&
-                  targetActor.level > effectLevel &&
-                  ["attack-roll", "spell-attack-roll", "skill-check"].includes(this.type)
-                ? DEGREE_ADJUSTMENT_AMOUNTS.LOWER
-                : null;
+                targetActor.level > effectLevel &&
+                ["attack-roll", "spell-attack-roll", "skill-check"].includes(this.type)
+                    ? -1
+                    : null;
 
         if (amount) {
             dosAdjustments.push({
@@ -383,7 +369,7 @@ function extractDegreeOfSuccessAdjustments(synthetics, selectors) {
     return Object.values(pick(synthetics.degreeOfSuccessAdjustments, selectors)).flat();
 }
 
-function pick(obj, keys){
+function pick(obj, keys) {
     return [...keys].reduce(
         (result, key) => {
             if (key in obj) {
@@ -395,15 +381,15 @@ function pick(obj, keys){
     );
 }
 
-async function createResultFlavor({ degree, target }) {
+async function createResultFlavor({degree, target}) {
     if (!degree) return null;
 
-    const { dc } = degree;
+    const {dc} = degree;
     const needsDCParam = !!dc.label && Number.isInteger(dc.value) && !dc.label.includes("{dc}");
     const customLabel =
         needsDCParam && dc.label ? `<dc>${game.i18n.localize(dc.label)}: {dc}</dc>` : dc.label ?? null;
 
-    const targetActor = await (async ()=> {
+    const targetActor = await (async () => {
         if (!target?.actor) return null;
         if (target.actor instanceof CONFIG.Actor.documentClass) return target.actor;
 
@@ -412,21 +398,21 @@ async function createResultFlavor({ degree, target }) {
         return maybeActor instanceof CONFIG.Actor.documentClass
             ? maybeActor
             : maybeActor instanceof CONFIG.Token.documentClass
-            ? maybeActor.actor
-            : null;
+                ? maybeActor.actor
+                : null;
     })();
 
     // Not actually included in the template, but used for creating other template data
     const targetData = await (async () => {
         if (!target) return null;
 
-        const token = await (async ()=> {
+        const token = await (async () => {
             if (!target.token) return null;
             if (target.token instanceof CONFIG.Token.documentClass) return target.token;
             if (targetActor?.token) return targetActor.token;
 
             // This is from a context flag: get the actor via UUID
-            return fromUuid(target.token) ;
+            return fromUuid(target.token);
         })();
 
         const canSeeTokenName = (token ?? new CONFIG.Token.documentClass(targetActor?.prototypeToken.toObject() ?? {}))
@@ -439,7 +425,7 @@ async function createResultFlavor({ degree, target }) {
         };
     })();
 
-    const { checkDCs } = CONFIG.PF2E;
+    const {checkDCs} = CONFIG.PF2E;
 
     // DC, circumstance adjustments, and the target's name
     const dcData = (() => {
@@ -447,9 +433,9 @@ async function createResultFlavor({ degree, target }) {
             dc.slug ?? (dc?.statistic?.parent?.slug ? dc.statistic.parent.slug : null);
         const dcType = game.i18n.localize(
             dc.label?.trim() ||
-                game.i18n.localize(
-                    dcSlug in checkDCs.Specific ? checkDCs.Specific[dcSlug] : checkDCs.Unspecific,
-                ),
+            game.i18n.localize(
+                dcSlug in checkDCs.Specific ? checkDCs.Specific[dcSlug] : checkDCs.Unspecific,
+            ),
         );
 
         // Get any circumstance penalties or bonuses to the target's DC
@@ -468,16 +454,16 @@ async function createResultFlavor({ degree, target }) {
             const labelKey = game.i18n.localize(
                 targetData ? checkDCs.Label.WithTarget : customLabel ?? checkDCs.Label.NoTarget,
             );
-            const markup = game.i18n.format(labelKey, { dcType, dc: dc.value, target: targetData?.name ?? null });
+            const markup = game.i18n.format(labelKey, {dcType, dc: dc.value, target: targetData?.name ?? null});
 
-            return { markup, visible };
+            return {markup, visible};
         }
 
         const adjustment = {
             preadjusted: preadjustedDC,
             direction:
                 preadjustedDC < dc.value ? "increased" : preadjustedDC > dc.value ? "decreased" : "no-change",
-            circumstances: circumstances.map((c) => ({ label: c.label, value: c.modifier })),
+            circumstances: circumstances.map((c) => ({label: c.label, value: c.modifier})),
         };
 
         // If the adjustment direction is "no-change", the bonuses and penalties summed to zero
@@ -491,7 +477,7 @@ async function createResultFlavor({ degree, target }) {
             adjusted: dc.value,
         });
 
-        return { markup, visible, adjustment };
+        return {markup, visible, adjustment};
     })();
 
     // The result: degree of success (with adjustment if applicable) and visibility setting
@@ -518,7 +504,7 @@ async function createResultFlavor({ degree, target }) {
         });
         const visible = game.settings.get("pf2e", "metagame_showResults");
 
-        return { markup, visible };
+        return {markup, visible};
     })();
 
     // Render the template and replace quasi-XML nodes with visibility-data-containing HTML elements
@@ -528,15 +514,15 @@ async function createResultFlavor({ degree, target }) {
     });
 
     const html = parseHTML(rendered);
-    const { convertXMLNode } = game.pf2e.TextEditor;
+    const {convertXMLNode} = game.pf2e.TextEditor;
 
     if (targetData) {
-        convertXMLNode(html, "target", { visible: targetData.visible, whose: "target" });
+        convertXMLNode(html, "target", {visible: targetData.visible, whose: "target"});
     }
-    convertXMLNode(html, "dc", { visible: dcData.visible, whose: "target" });
+    convertXMLNode(html, "dc", {visible: dcData.visible, whose: "target"});
     if (dcData.adjustment) {
-        const { adjustment } = dcData;
-        convertXMLNode(html, "preadjusted", { classes: ["unadjusted"] });
+        const {adjustment} = dcData;
+        convertXMLNode(html, "preadjusted", {classes: ["unadjusted"]});
 
         // Add circumstance bonuses/penalties for tooltip content
         const adjustedNode = convertXMLNode(html, "adjusted", {
@@ -548,7 +534,7 @@ async function createResultFlavor({ degree, target }) {
             adjustedNode.dataset.tooltip = adjustment.circumstances
                 .map(
                     (a) =>
-                        createHTMLElement("div", { children: [`${a.label}: ${signedInteger(a.value)}`] }).outerHTML,
+                        createHTMLElement("div", {children: [`${a.label}: ${signedInteger(a.value)}`]}).outerHTML,
                 )
                 .join("\n");
         }
@@ -566,11 +552,11 @@ async function createResultFlavor({ degree, target }) {
         adjustedNode.dataset.tooltip = degree.adjustment.label;
     }
 
-    convertXMLNode(html, "offset", { visible: dcData.visible, whose: "target" });
+    convertXMLNode(html, "offset", {visible: dcData.visible, whose: "target"});
 
     // If target and DC are both hidden from view, hide both
     if (!targetData?.visible && !dcData.visible) {
-        const targetDC = html.querySelector<HTMLElement>(".target-dc");
+        const targetDC = html.querySelector < HTMLElement > (".target-dc");
         if (targetDC) targetDC.dataset.visibility = "gm";
 
         // If result is also hidden, hide everything
@@ -582,7 +568,7 @@ async function createResultFlavor({ degree, target }) {
     return html;
 }
 
-function createTagFlavor({ _modifiers, traits, item, type, extraTags }) {
+function createTagFlavor({_modifiers, traits, item, type, extraTags}) {
     const toTagElement = (tag, cssClass = null) => {
         const span = document.createElement("span");
         span.classList.add("tag");
@@ -597,23 +583,23 @@ function createTagFlavor({ _modifiers, traits, item, type, extraTags }) {
     };
 
     const cTraits =
-            (traits?.map((t) => traitSlugToObject(t, CONFIG.PF2E.actionTraits))?.map((trait) => {
-                trait.label = game.i18n.localize(trait.label);
-                return trait;
-            }) ?? new Set())
+        (traits?.map((t) => traitSlugToObject(t, CONFIG.PF2E.actionTraits))?.map((trait) => {
+            trait.label = game.i18n.localize(trait.label);
+            return trait;
+        }) ?? new Set())
             .sort((a, b) => a.label.localeCompare(b.label, game.i18n.lang))
             .map((t) => toTagElement(t)) ?? [];
 
     const itemTraits =
         item?.isOfType("weapon", "melee") && type !== "saving-throw"
             ? Array.from(item.traits)
-                  .map((t) => {
-                      const obj = traitSlugToObject(t, CONFIG.PF2E.npcAttackTraits);
-                      obj.label = game.i18n.localize(obj.label);
-                      return obj;
-                  })
-                  .sort((a, b) => a.label.localeCompare(b.label, game.i18n.lang))
-                  .map((t) => toTagElement(t, "alt"))
+                .map((t) => {
+                    const obj = traitSlugToObject(t, CONFIG.PF2E.npcAttackTraits);
+                    obj.label = game.i18n.localize(obj.label);
+                    return obj;
+                })
+                .sort((a, b) => a.label.localeCompare(b.label, game.i18n.lang))
+                .map((t) => toTagElement(t, "alt"))
             : [];
 
     const properties = (() => {
@@ -623,7 +609,7 @@ function createTagFlavor({ _modifiers, traits, item, type, extraTags }) {
             // Show the range increment or max range as a tag
             const slug = range.increment ? `range-increment-${range.increment}` : `range-${range.max}`;
             const description = "PF2E.Item.Weapon.RangeIncrementN.Hint";
-            return [toTagElement({ name: slug, label, description }, "secondary")];
+            return [toTagElement({name: slug, label, description}, "secondary")];
         } else {
             return [];
         }
@@ -631,7 +617,7 @@ function createTagFlavor({ _modifiers, traits, item, type, extraTags }) {
 
     const traitsAndProperties = createHTMLElement("div", {
         classes: ["tags", "traits"],
-        dataset: { tooltipClass: "pf2e" },
+        dataset: {tooltipClass: "pf2e"},
     });
     if (itemTraits.length === 0 && properties.length === 0) {
         traitsAndProperties.append(...cTraits);
@@ -646,9 +632,9 @@ function createTagFlavor({ _modifiers, traits, item, type, extraTags }) {
         .map((modifier) => {
             const sign = modifier.modifier < 0 ? "" : "+";
             const label = `${modifier.label} ${sign}${modifier.modifier}`;
-            return toTagElement({ name: modifier.slug, label }, "transparent");
+            return toTagElement({name: modifier.slug, label}, "transparent");
         });
-    const tagsFromOptions = extraTags.map((t) => toTagElement({ label: game.i18n.localize(t) }, "transparent"));
+    const tagsFromOptions = extraTags.map((t) => toTagElement({label: game.i18n.localize(t)}, "transparent"));
     const modifiersAndExtras = createHTMLElement("div", {
         classes: ["tags", "modifiers"],
         children: [...modifiers, ...tagsFromOptions],
@@ -658,7 +644,7 @@ function createTagFlavor({ _modifiers, traits, item, type, extraTags }) {
         traitsAndProperties.childElementCount > 0 ? traitsAndProperties : null,
         document.createElement("hr"),
         modifiersAndExtras,
-    ].filter(a=>a);
+    ].filter(a => a);
 }
 
 function createActionRangeLabel(range) {
@@ -667,10 +653,10 @@ function createActionRangeLabel(range) {
         ? ["PF2E.Action.Range.IncrementN", range.increment]
         : ["PF2E.Action.Range.MaxN", range.max];
 
-    return game.i18n.format(key, { n: value });
+    return game.i18n.format(key, {n: value});
 }
 
-function createHTMLElement(nodeName, { classes = [], dataset = {}, children = [], innerHTML } = {},) {
+function createHTMLElement(nodeName, {classes = [], dataset = {}, children = [], innerHTML} = {},) {
     const element = document.createElement(nodeName);
     if (classes.length > 0) element.classList.add(...classes);
 
@@ -706,7 +692,7 @@ function noteToHTML(n) {
     }
 
     if (n.title) {
-        const strong = createHTMLElement("strong", { innerHTML: game.i18n.localize(n.title) });
+        const strong = createHTMLElement("strong", {innerHTML: game.i18n.localize(n.title)});
         element.prepend(strong, " ");
     }
 
@@ -725,7 +711,7 @@ function traitSlugToObject(trait, dictionary) {
     return traitObject;
 }
 
-function signedInteger(value, { emptyStringZero = false } = {}) {
+function signedInteger(value, {emptyStringZero = false} = {}) {
     if (value === 0 && emptyStringZero) return "";
 
     const nf = (new Intl.NumberFormat(game.i18n.lang, {
@@ -767,7 +753,6 @@ function criticalFailureMessageOutcome(message) {
     return "criticalFailure" === message?.flags?.pf2e?.context?.outcome;
 }
 
-
 function isCorrectMessageType(message, type) {
     if (type === "undefined") {
         return undefined === message?.flags?.pf2e?.context?.type;
@@ -776,17 +761,25 @@ function isCorrectMessageType(message, type) {
 }
 
 async function nudgeFate(message) {
-    if (!(game.user.isGM && game.user === game.user.activeGM)) {return}
-    if (!anyFailureMessageOutcome(message)) {return}
+    if (!(game.user.isGM && game.user === game.user.activeGM)) {
+        return
+    }
+    if (!anyFailureMessageOutcome(message)) {
+        return
+    }
     if (isCorrectMessageType(message, "saving-throw")
         || isCorrectMessageType(message, "attack-roll")
         || isCorrectMessageType(message, "skill-check")
     ) {
-        if (!message.flags.pf2e.modifiers.find(a=>a.slug==='nudge-fate')) {return}
+        if (!message.flags.pf2e.modifiers.find(a => a.slug === 'nudge-fate')) {
+            return
+        }
 
         const rr = message.rolls[0];
         let dc = message?.flags?.pf2e?.context?.dc.value
-        if (!dc || !rr) {return}
+        if (!dc || !rr) {
+            return
+        }
 
         const newR = calculateDegreeOfSuccess(dc, rr._total + 1, rr.dice[0].total)
         if (rr.degreeOfSuccess !== newR) {
@@ -795,8 +788,8 @@ async function nudgeFate(message) {
             message.actor.itemTypes.effect.find((a) => a.slug === "effect-nudge-fate")?.delete()
         }
     }
-};
+}
 
-Hooks.on("createChatMessage", async (message, user, _options, userId) => {
+Hooks.on("createChatMessage", async (message, user, _options, _userId) => {
     await nudgeFate(message)
 });
