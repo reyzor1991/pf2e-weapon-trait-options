@@ -1,5 +1,8 @@
 # Changelog
 
+### Version 0.2.1
+- Fix handling forceful for NPC
+
 ### Version 0.2.0
 - Non/Lethal roll
 

@@ -33,7 +33,8 @@ Hooks.on("renderChatMessage", async (message, html) => {
         if (message.item?.system?.traits?.value?.includes('forceful')
             && !message.flags.pf2e.modifiers.find(a => a.slug === 'forceful-second' && a.enabled)
             && !message.flags.pf2e.modifiers.find(a => a.slug === 'forceful-third' && a.enabled)
-            && !_ignore.includes(name)
+            && !_ignore.includes('forceful-second')
+            && !_ignore.includes('forceful-third')
         ) {
             addDamageButton(message, _ignore, buttons, addForceful, 'forceful');
         }
@@ -75,21 +76,40 @@ function addDamageButton(message, _ignore, buttons, callBtn, name) {
 async function addForceful(event, message, _ignore) {
     let systemFlags = message.flags.pf2e;
     let traitName = systemFlags.context.options.includes("map:increases:1") ? "forceful-second" : "forceful-third";
-    let mods = [...systemFlags.modifiers];
 
-    let _e = mods.find(a => a.slug === traitName);
-    _e.enabled = true;
-    _e.ignored = false;
+    let damageBonus = traitName === "forceful-second" ? 1 : 2;
+
+    if (message.actor.isOfType('character')) {
+        let mods = [...systemFlags.modifiers];
+        let _e = mods.find(a => a.slug === traitName);
+        _e.enabled = true;
+        _e.ignored = false;
+    }
 
     let roll = message.rolls[0];
     let isCrit = roll?.options?.degreeOfSuccess === 3;
 
-    roll.options.damage.damage.modifiers.find(a => a.slug === traitName).ignored = false;
-    roll.options.damage.damage.modifiers.find(a => a.slug === traitName).enabled = true;
-    roll.options.damage.modifiers.find(a => a.slug === traitName).ignored = false;
-    roll.options.damage.modifiers.find(a => a.slug === traitName).enabled = true;
+    if (message.actor.isOfType('character')) {
+        roll.options.damage.damage.modifiers.find(a => a.slug === traitName).ignored = false;
+        roll.options.damage.damage.modifiers.find(a => a.slug === traitName).enabled = true;
+        roll.options.damage.modifiers.find(a => a.slug === traitName).ignored = false;
+        roll.options.damage.modifiers.find(a => a.slug === traitName).enabled = true;
+    }
 
-    let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, roll.options.damage.damage.modifiers.filter(m => !m.damageType || m.damageType === 'slashing'));
+    let newMod = message.actor.isOfType('character')
+        ? new game.pf2e.StatisticModifier(
+            message.flags.pf2e.modifierName,
+            roll.options.damage.damage.modifiers.filter(m => !m.damageType || m.damageType === 'slashing')
+        ) : new game.pf2e.StatisticModifier(
+            message.flags.pf2e.modifierName,
+            [new game.pf2e.Modifier({
+                label: `${traitName.split('-')[0].capitalize()}`,
+                slug: traitName,
+                type: "circumstance",
+                modifier: damageBonus,
+                predicate: []
+            })]
+        );
 
     let base = roll.terms[0].rolls[0];
     let baseTerms = isCrit
@@ -98,26 +118,26 @@ async function addForceful(event, message, _ignore) {
 
     if (baseTerms.constructor.name === "Grouping") {
         let ae = baseTerms.term.operands.find(a => a.constructor.name === 'ArithmeticExpression')
-        let insideNumber = baseTerms.term.operands.find(a => a instanceof NumericTerm)
+        let insideNumber = baseTerms.term.operands.find(a => a instanceof foundry.dice.terms.NumericTerm)
         if (ae) {
-            let nValue = ae.operands.find(a => a instanceof NumericTerm);
+            let nValue = ae.operands.find(a => a instanceof foundry.dice.terms.NumericTerm);
             if (nValue) {
-                nValue.number = newMod.totalModifier;
+                nValue.number = message.actor.isOfType('character') ? newMod.totalModifier : nValue.number + newMod.totalModifier;
                 nValue._evaluated = false
                 nValue.evaluate()
             }
             ae._evaluated = false
             ae.evaluate()
         } else if (insideNumber) {
-            insideNumber.number = newMod.totalModifier;
+            insideNumber.number = message.actor.isOfType('character') ? newMod.totalModifier : insideNumber.number + newMod.totalModifier;
             insideNumber._evaluated = false
             insideNumber.evaluate()
         }
 
         baseTerms._evaluated = false
         baseTerms.evaluate()
-    } else if (baseTerms instanceof NumericTerm) {
-        baseTerms.number = newMod.totalModifier;
+    } else if (baseTerms instanceof foundry.dice.terms.NumericTerm) {
+        baseTerms.number = message.actor.isOfType('character') ? newMod.totalModifier : baseTerms.number + newMod.totalModifier;
     }
     base._evaluated = false
     base.resetFormula()
@@ -167,12 +187,12 @@ async function rollLogic(event, message, _ignore, traitName) {
     let newMod = new game.pf2e.StatisticModifier(message.flags.pf2e.modifierName, mods);
 
     let roll = message.rolls[0];
-    let n = roll.terms.find(a => a instanceof NumericTerm);
+    let n = roll.terms.find(a => a instanceof foundry.dice.terms.NumericTerm);
     if (n) {
         n.number = newMod.totalModifier
     } else {
         roll.terms.push(new OperatorTerm({operator: "+"}))
-        roll.terms.push(new NumericTerm({number: newMod.totalModifier}))
+        roll.terms.push(new foundry.dice.terms.NumericTerm({number: newMod.totalModifier}))
     }
     roll._evaluated = false
     roll.options.totalModifier = newMod.totalModifier;
