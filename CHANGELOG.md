@@ -1,5 +1,8 @@
 # Changelog
 
+### Version 0.3.0
+- v13
+
 ### Version 0.2.1
 - Fix handling forceful for NPC
 

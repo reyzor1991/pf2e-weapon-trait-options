@@ -2,7 +2,7 @@ const moduleName = "pf2e-weapon-trait-options";
 
 // Backswing
 // sweep
-Hooks.on("renderChatMessage", async (message, html) => {
+Hooks.on("renderChatMessageHTML", (message, html) => {
     if (message.flags?.pf2e?.context?.type !== 'attack-roll') {
         return
     }
@@ -15,13 +15,17 @@ Hooks.on("renderChatMessage", async (message, html) => {
     addButtonLethalBts(message, _ignore, buttons);
 
     if (buttons.length > 0) {
-        html.find('.message-buttons').after(`<div class='traits-buttons'></div>`)
-        html.find('.traits-buttons').append(buttons)
+        html.querySelector('.message-buttons')
+            ?.after(foundry.utils.parseHTML(`<div class='traits-buttons'></div>`))
+        buttons.forEach(e=>{
+            html.querySelector('.traits-buttons')
+                .append(e)
+        })
     }
 })
 
 // forcefull
-Hooks.on("renderChatMessage", async (message, html) => {
+Hooks.on("renderChatMessageHTML", async (message, html) => {
     if (message.flags?.pf2e?.context?.type !== 'damage-roll') {
         return
     }
@@ -41,35 +45,37 @@ Hooks.on("renderChatMessage", async (message, html) => {
     }
 
     if (buttons.length > 0) {
-        html.find('.damage-application').first().before(`<div class='traits-buttons'></div>`)
-        html.find('.traits-buttons').append(buttons)
-    }
+        html.querySelector('.damage-application')?.before(foundry.utils.parseHTML(`<div class='traits-buttons'></div>`))
+        buttons.forEach(e=>{
+            html.querySelector('.traits-buttons')
+                .append(e)
+        })    }
 })
 
 function addButton(message, _ignore, buttons, name) {
     if (message.item?.system?.traits?.value?.includes(name) && !message.flags.pf2e.modifiers.find(a => a.slug === name && a.enabled) && !_ignore.includes(name)) {
-        let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.split('-')[0].capitalize()}">Apply ${name.capitalize()}</button>`)
-        button.click((e) => rollLogic(e, message, _ignore, name));
+        let button = foundry.utils.parseHTML(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.split('-')[0].capitalize()}">Apply ${name.capitalize()}</button>`)
+        button.addEventListener('click', (e) => rollLogic(e, message, _ignore, name));
         buttons.push(button);
     }
 }
 
 function addButtonLethalBts(message, _ignore, buttons) {
     if (message.item?.system?.traits?.value?.includes("nonlethal") && !_ignore.includes("lethal")) {
-        let button = $(`<button class="${name}" data-tooltip="Add lethal attack">Apply Lethal</button>`)
-        button.click((e) => rollLogic(e, message, _ignore, "lethal"));
+        let button = foundry.utils.parseHTML(`<button class="${name}" data-tooltip="Add lethal attack">Apply Lethal</button>`)
+        button.addEventListener('click', (e) => rollLogic(e, message, _ignore, "lethal"));
         buttons.push(button);
     }
     if (!message.item?.system?.traits?.value?.includes("nonlethal") && !_ignore.includes("nonlethal")) {
-        let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescriptionNonlethal">Apply Nonlethal</button>`)
-        button.click((e) => rollLogic(e, message, _ignore, "nonlethal"));
+        let button = foundry.utils.parseHTML(`<button class="${name}" data-tooltip="PF2E.TraitDescriptionNonlethal">Apply Nonlethal</button>`)
+        button.addEventListener('click', (e) => rollLogic(e, message, _ignore, "nonlethal"));
         buttons.push(button);
     }
 }
 
 function addDamageButton(message, _ignore, buttons, callBtn, name) {
-    let button = $(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.split('-')[0].capitalize()}">Apply ${name.capitalize()}</button>`)
-    button.click((e) => callBtn(e, message, _ignore));
+    let button = foundry.utils.parseHTML(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.split('-')[0].capitalize()}">Apply ${name.capitalize()}</button>`)
+    button.addEventListener('click',(e) => callBtn(e, message, _ignore));
     buttons.push(button);
 }
 
@@ -200,6 +206,12 @@ async function rollLogic(event, message, _ignore, traitName) {
     roll.resetFormula()
     roll.evaluate()
 
+    message = await message.update({
+        'rolls': [roll],
+        content: `${roll.total}`,
+    });
+    systemFlags = message.flags.pf2e;
+
     let context = systemFlags.context;
     context.options.push(traitName + '-bonus');
 
@@ -232,7 +244,6 @@ async function rollLogic(event, message, _ignore, traitName) {
 
         if (rollOptions.has("fortune") && rollOptions.has("misfortune")) {
             for (const sub of substitutions) {
-                // Cancel all roll substitutions and recalculate
                 rollOptions.delete(`substitute:${sub.slug}`);
             }
 
@@ -323,8 +334,6 @@ async function rollLogic(event, message, _ignore, traitName) {
     delete context.dc;
 
     await message.update({
-        'rolls': [roll],
-        content: `${roll.total}`,
         flavor: `${newFlavor}`,
         speaker: message.speaker,
         flags: {

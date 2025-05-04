@@ -2,7 +2,7 @@
   "id": "pf2e-weapon-trait-options",
   "title": "PF2e Weapon Trait Options",
   "description": "PF2e Weapon Trait Options",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "authors": [
     {
       "name": "Reyzor",
@@ -20,12 +20,12 @@
   "packs": [],
   "socket": true,
   "compatibility": {
-    "minimum": "11",
-    "verified": "12.327"
+    "minimum": "13.342",
+    "verified": "13.342"
   },
   "url": "https://github.com/reyzor1991/pf2e-wiki/wiki/PF2e-Weapon-Trait-Options",
-  "manifest": "https://www.dropbox.com/scl/fi/7r65oiyv5anaya8eo0u31/module.json?rlkey=bl355siisqdjzi6i3j9d08ejp&dl=1",
-  "download": "https://www.dropbox.com/scl/fi/kuufn9avbhyi68mkdxfi2/pf2e-weapon-trait-options.zip?rlkey=egcuinzimpx87bxjebvqeq9sy&dl=1",
+  "manifest": "https://www.dropbox.com/scl/fi/fnmc1v0tqauudiegrpa80/module.json?rlkey=tzcf563xgbjb3jwnih18b7iro&st=2jrlte9r&dl=1",
+  "download": "https://www.dropbox.com/scl/fi/yga21qu7yndmnlbk3rt02/pf2e-weapon-trait-options.zip?rlkey=pobhwcolfs9k5ffzuiajvgo3i&st=vbjbabku&dl=1",
   "relationships": {
     "systems": [
       {
@@ -33,22 +33,13 @@
         "type": "system",
         "manifest": "https://github.com/foundryvtt/pf2e/releases/latest/download/system.json",
         "compatibility": {
-          "minimum": "5.3.2",
-          "verified": "6.0.2"
+          "minimum": "7.0.0",
+          "verified": "7.0.0"
         }
       }
     ],
     "requires": [
-      {
-        "id": "socketlib",
-        "type": "module",
-        "manifest": "https://raw.githubusercontent.com/manuelVo/foundryvtt-socketlib/master/module.json"
-      },
-      {
-        "id": "lib-wrapper",
-        "type": "module",
-        "manifest": "https://raw.githubusercontent.com/ruipin/fvtt-lib-wrapper/master/module.json"
-      }
+
     ]
   }
 }
