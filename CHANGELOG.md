@@ -1,5 +1,8 @@
 # Changelog
 
+### Version 0.3.1
+- fix styles
+
 ### Version 0.3.0
 - v13
 

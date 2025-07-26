@@ -207,6 +207,11 @@ async function rollLogic(event, message, _ignore, traitName) {
     roll.evaluate()
 
     message = await message.update({
+        flags: {
+            pf2e: {
+                modifiers: mods
+            },
+        },
         'rolls': [roll],
         content: `${roll.total}`,
     });

@@ -1,0 +1,8 @@
+.message-content .traits-buttons {
+    display: flex;
+    flex-direction: column;
+
+    button {
+        flex: 1;
+    }
+}
