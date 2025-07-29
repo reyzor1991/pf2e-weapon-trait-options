@@ -22,7 +22,35 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                 .append(e)
         })
     }
+
+    if (game.settings.get(moduleName, "addHalfDamage") && message?.item?.isOfType("weapon")) {
+        const successButton = html?.querySelector(".message-buttons .success")
+        if (successButton) {
+            const html = `<button type="button">Half</button>`;
+            const newButton = foundry.utils.parseHTML(html)
+            newButton.addEventListener('click', async (event) => {
+                let d = await message._strike.damage({createMessage: false})
+                const dr = CONFIG.Dice.rolls.find(e => e.name === "DamageRoll");
+                new dr(`{${halfFormula(d.instances.map(i=>i._formula)).join(",")}}`).toMessage()
+            });
+            successButton.insertAdjacentElement('afterend', newButton);
+        }
+    }
 })
+
+function halfFormula(formulaParts) {
+    return formulaParts.map(part => {
+        const typeMatch = part.match(/\[([^\]]+)\]$/); // e.g. [fire,persistent]
+        if (!typeMatch) return part; // invalid format, skip
+
+        const type = typeMatch[0]; // full "[fire,persistent]"
+        const beforeType = part.slice(0, -type.length).trim();
+
+        // Wrap the damage part in parentheses and divide by 2
+        const halved = `(${beforeType} / 2)${type}`;
+        return halved;
+    });
+}
 
 // forcefull
 Hooks.on("renderChatMessageHTML", async (message, html) => {
@@ -827,3 +855,13 @@ async function nudgeFate(message) {
 Hooks.on("createChatMessage", async (message, user, _options, _userId) => {
     await nudgeFate(message)
 });
+
+Hooks.on("init", async () => {
+    game.settings.register(moduleName, "addHalfDamage", {
+        config: true,
+        scope: "world",
+        name: `Add half-damage button`,
+        hint: `experimental feature`,
+        default: false,
+        type: Boolean,
+    });});

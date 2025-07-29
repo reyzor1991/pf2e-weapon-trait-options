@@ -1,5 +1,8 @@
 # Changelog
 
+### Version 0.3.2
+- half damage btn (experimental, under setting)
+
 ### Version 0.3.1
 - fix styles
 
