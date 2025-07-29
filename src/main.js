@@ -29,9 +29,16 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             const html = `<button type="button">Half</button>`;
             const newButton = foundry.utils.parseHTML(html)
             newButton.addEventListener('click', async (event) => {
-                const target = message.target
+                let target = message.target
                     ? {actor: message.target.actor.uuid, token: message.target.token.uuid}
                     : null
+                if (!target && game.user.targets.first()?.document) {
+                    let d = game.user.targets.first()?.document;
+                    target = {
+                        actor: d.actor.uuid, token: d.uuid
+                    }
+                }
+
                 let d = await message._strike.damage({
                     createMessage: false
                 })
