@@ -17,7 +17,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
     if (buttons.length > 0) {
         html.querySelector('.message-buttons')
             ?.after(foundry.utils.parseHTML(`<div class='traits-buttons'></div>`))
-        buttons.forEach(e=>{
+        buttons.forEach(e => {
             html.querySelector('.traits-buttons')
                 .append(e)
         })
@@ -29,9 +29,26 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             const html = `<button type="button">Half</button>`;
             const newButton = foundry.utils.parseHTML(html)
             newButton.addEventListener('click', async (event) => {
-                let d = await message._strike.damage({createMessage: false})
+                const target = message.target
+                    ? {actor: message.target.actor.uuid, token: message.target.token.uuid}
+                    : null
+                let d = await message._strike.damage({
+                    createMessage: false
+                })
                 const dr = CONFIG.Dice.rolls.find(e => e.name === "DamageRoll");
-                new dr(`{${halfFormula(d.instances.map(i=>i._formula)).join(",")}}`).toMessage()
+                new dr(`{${halfFormula(d.instances.map(i => i._formula)).join(",")}}`).toMessage({
+                    speaker: message.speaker,
+                    flags: {
+                        pf2e: {
+                            context: {
+                                outcome: "success",
+                                type: "damage-roll",
+                                target
+                            },
+                            target
+                        }
+                    }
+                })
             });
             successButton.insertAdjacentElement('afterend', newButton);
         }
@@ -74,10 +91,11 @@ Hooks.on("renderChatMessageHTML", async (message, html) => {
 
     if (buttons.length > 0) {
         html.querySelector('.damage-application')?.before(foundry.utils.parseHTML(`<div class='traits-buttons'></div>`))
-        buttons.forEach(e=>{
+        buttons.forEach(e => {
             html.querySelector('.traits-buttons')
                 .append(e)
-        })    }
+        })
+    }
 })
 
 function addButton(message, _ignore, buttons, name) {
@@ -103,7 +121,7 @@ function addButtonLethalBts(message, _ignore, buttons) {
 
 function addDamageButton(message, _ignore, buttons, callBtn, name) {
     let button = foundry.utils.parseHTML(`<button class="${name}" data-tooltip="PF2E.TraitDescription${name.split('-')[0].capitalize()}">Apply ${name.capitalize()}</button>`)
-    button.addEventListener('click',(e) => callBtn(e, message, _ignore));
+    button.addEventListener('click', (e) => callBtn(e, message, _ignore));
     buttons.push(button);
 }
 
@@ -864,4 +882,5 @@ Hooks.on("init", async () => {
         hint: `experimental feature`,
         default: false,
         type: Boolean,
-    });});
+    });
+});

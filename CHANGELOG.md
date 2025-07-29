@@ -1,5 +1,8 @@
 # Changelog
 
+### Version 0.3.4
+- compatibility with target helper
+
 ### Version 0.3.3
 - fix half damage btn for npc
 
