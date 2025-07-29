@@ -23,7 +23,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         })
     }
 
-    if (game.settings.get(moduleName, "addHalfDamage") && message?.item?.isOfType("weapon")) {
+    if (game.settings.get(moduleName, "addHalfDamage") && message._strike) {
         const successButton = html?.querySelector(".message-buttons .success")
         if (successButton) {
             const html = `<button type="button">Half</button>`;

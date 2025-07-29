@@ -1,5 +1,8 @@
 # Changelog
 
+### Version 0.3.3
+- fix half damage btn for npc
+
 ### Version 0.3.2
 - half damage btn (experimental, under setting)
 
