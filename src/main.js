@@ -19,7 +19,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             ?.after(foundry.utils.parseHTML(`<div class='traits-buttons'></div>`))
         buttons.forEach(e => {
             html.querySelector('.traits-buttons')
-                .append(e)
+                ?.append(e)
         })
     }
 
@@ -59,6 +59,15 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             });
             successButton.insertAdjacentElement('afterend', newButton);
         }
+    } else if (game.settings.get(moduleName, "addHalfDamage") && message.item) {
+        const roll = message.rolls.find(
+            r => r instanceof CheckRoll && r.options.action === "elemental-blast",
+        );
+        if (!roll) {
+            return;
+        }
+
+
     }
 })
 

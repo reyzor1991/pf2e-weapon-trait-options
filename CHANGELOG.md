@@ -1,5 +1,8 @@
 # Changelog
 
+### Version 0.3.5
+- Fix handling broken messages
+
 ### Version 0.3.4
 - compatibility with target helper
 
