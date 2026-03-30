@@ -2,7 +2,7 @@
   "id": "pf2e-weapon-trait-options",
   "title": "PF2e Weapon Trait Options",
   "description": "PF2e Weapon Trait Options",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "authors": [
     {
       "name": "Reyzor",
@@ -22,7 +22,7 @@
   "socket": true,
   "compatibility": {
     "minimum": "13.342",
-    "verified": "13.342"
+    "verified": "13.351"
   },
   "url": "https://github.com/reyzor1991/pf2e-wiki/wiki/PF2e-Weapon-Trait-Options",
   "manifest": "https://www.dropbox.com/scl/fi/fnmc1v0tqauudiegrpa80/module.json?rlkey=tzcf563xgbjb3jwnih18b7iro&st=2jrlte9r&dl=1",

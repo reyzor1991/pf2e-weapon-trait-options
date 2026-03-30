@@ -1,5 +1,8 @@
 # Changelog
 
+### Version 0.3.6
+- Update compatibility
+
 ### Version 0.3.5
 - Fix handling broken messages
 

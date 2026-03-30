@@ -206,6 +206,10 @@ async function addForceful(event, message, _ignore) {
         baseTerms.evaluate()
     } else if (baseTerms instanceof foundry.dice.terms.NumericTerm) {
         baseTerms.number = message.actor.isOfType('character') ? newMod.totalModifier : baseTerms.number + newMod.totalModifier;
+    } else if (baseTerms instanceof foundry.dice.terms.Die) {
+        baseTerms.results = [{active: true, result: baseTerms.total + damageBonus}]
+        baseTerms._evaluated = false
+        baseTerms.evaluate()
     }
     base._evaluated = false
     base.resetFormula()
